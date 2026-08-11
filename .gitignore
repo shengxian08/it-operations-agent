@@ -3,3 +3,18 @@
 
 # Local isolated implementation worktrees
 .worktrees/
+
+# Local environment and dependency artifacts
+.env
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+*.log
