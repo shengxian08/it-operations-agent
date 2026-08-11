@@ -1,2 +1,5 @@
 # Local visual-brainstorming session files
 .superpowers/
+
+# Local isolated implementation worktrees
+.worktrees/
