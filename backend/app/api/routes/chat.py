@@ -2,7 +2,7 @@ import json
 from collections.abc import AsyncIterator
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -65,10 +65,15 @@ async def stream_message(
 async def record_feedback(
     message_id: str,
     payload: FeedbackRequest,
+    user_id: Annotated[str, Query(min_length=1, max_length=64)],
     service: Annotated[ChatService, Depends(get_chat_service)],
 ) -> dict[str, str]:
     try:
-        await service.record_feedback(message_id=message_id, feedback=payload.feedback)
+        await service.record_feedback(
+            message_id=message_id,
+            user_id=user_id,
+            feedback=payload.feedback,
+        )
     except MessageNotFoundError as error:
         raise ApiProblem(404, "message_not_found", "Message was not found.") from error
     return {"message_id": message_id, "feedback": payload.feedback}

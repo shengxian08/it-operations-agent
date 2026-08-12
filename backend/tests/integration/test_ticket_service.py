@@ -33,6 +33,7 @@ class TicketTestContext:
     owner_id: str
     other_user_id: str
     conversation_id: str
+    second_conversation_id: str
 
 
 @pytest_asyncio.fixture
@@ -41,6 +42,7 @@ async def ticket_context() -> AsyncIterator[TicketTestContext]:
     owner_id = f"test-owner-{suffix}"
     other_user_id = f"test-other-{suffix}"
     conversation_id = f"test-conversation-{suffix}"
+    second_conversation_id = f"test-conversation-second-{suffix}"
     confirmation_key_prefix = f"test:ticket-confirmation:{suffix}"
     database_url = os.getenv(
         "TEST_DATABASE_URL",
@@ -60,7 +62,12 @@ async def ticket_context() -> AsyncIterator[TicketTestContext]:
             ]
         )
         await session.flush()
-        session.add(Conversation(id=conversation_id, user_id=owner_id))
+        session.add_all(
+            [
+                Conversation(id=conversation_id, user_id=owner_id),
+                Conversation(id=second_conversation_id, user_id=owner_id),
+            ]
+        )
 
     context = TicketTestContext(
         service=TicketService(
@@ -74,6 +81,7 @@ async def ticket_context() -> AsyncIterator[TicketTestContext]:
         owner_id=owner_id,
         other_user_id=other_user_id,
         conversation_id=conversation_id,
+        second_conversation_id=second_conversation_id,
     )
 
     try:
@@ -101,7 +109,9 @@ async def ticket_context() -> AsyncIterator[TicketTestContext]:
                 )
             )
             await session.execute(
-                delete(Conversation).where(Conversation.id == conversation_id)
+                delete(Conversation).where(
+                    Conversation.id.in_([conversation_id, second_conversation_id])
+                )
             )
             await session.execute(
                 delete(User).where(User.id.in_([owner_id, other_user_id]))
@@ -169,6 +179,7 @@ async def test_create_ticket_rejects_unconfirmed_draft_without_writes(
             draft=ticket_draft(),
             confirmation_token=None,
             idempotency_key="unconfirmed-key",
+            conversation_id=ticket_context.conversation_id,
         )
 
     assert await write_counts(ticket_context) == (0, 0, 0)
@@ -188,8 +199,9 @@ async def test_create_ticket_rejects_blank_idempotency_key_without_writes(
         await ticket_context.service.create_confirmed(
             ticket_context.owner_id,
             draft,
-            token,
-            "   ",
+        token,
+        "   ",
+        conversation_id=ticket_context.conversation_id,
         )
 
     assert await write_counts(ticket_context) == (0, 0, 0)
@@ -210,8 +222,9 @@ async def test_confirmation_token_is_bound_to_exact_draft_without_writes(
         await ticket_context.service.create_confirmed(
             ticket_context.owner_id,
             changed,
-            token,
-            "changed-draft-key",
+        token,
+        "changed-draft-key",
+        conversation_id=ticket_context.conversation_id,
         )
 
     assert await write_counts(ticket_context) == (0, 0, 0)
@@ -231,8 +244,31 @@ async def test_confirmation_token_is_bound_to_conversation_user_without_writes(
         await ticket_context.service.create_confirmed(
             ticket_context.other_user_id,
             draft,
-            token,
-            "wrong-user-key",
+        token,
+        "wrong-user-key",
+        conversation_id=ticket_context.conversation_id,
+        )
+
+    assert await write_counts(ticket_context) == (0, 0, 0)
+
+
+@pytest.mark.asyncio
+async def test_confirmation_token_is_bound_to_its_exact_conversation_without_writes(
+    ticket_context: TicketTestContext,
+) -> None:
+    draft = ticket_draft()
+    token = await ticket_context.service.issue_confirmation_token(
+        ticket_context.conversation_id,
+        draft,
+    )
+
+    with pytest.raises(PermissionError, match="confirmation does not match"):
+        await ticket_context.service.create_confirmed(
+            user_id=ticket_context.owner_id,
+            conversation_id=ticket_context.second_conversation_id,
+            draft=draft,
+            confirmation_token=token,
+            idempotency_key="wrong-conversation-key",
         )
 
     assert await write_counts(ticket_context) == (0, 0, 0)
@@ -277,12 +313,14 @@ async def test_create_ticket_is_idempotent_and_writes_complete_audit_trail(
         draft,
         token,
         "idempotent-key",
+        conversation_id=ticket_context.conversation_id,
     )
     second = await ticket_context.service.create_confirmed(
         ticket_context.owner_id,
         draft,
         token,
         "idempotent-key",
+        conversation_id=ticket_context.conversation_id,
     )
 
     assert first == second
@@ -321,6 +359,7 @@ async def test_reused_idempotency_key_rejects_changed_draft_without_extra_write(
         original,
         first_token,
         "reused-key",
+        conversation_id=ticket_context.conversation_id,
     )
 
     changed = ticket_draft(priority="high")
@@ -334,6 +373,7 @@ async def test_reused_idempotency_key_rejects_changed_draft_without_extra_write(
             changed,
             changed_token,
             "reused-key",
+            conversation_id=ticket_context.conversation_id,
         )
 
     assert await write_counts(ticket_context) == (1, 1, 1)
@@ -366,6 +406,7 @@ async def test_idempotency_key_used_by_another_tool_is_rejected_without_writes(
             draft,
             token,
             idempotency_key,
+            conversation_id=ticket_context.conversation_id,
         )
 
     assert await write_counts(ticket_context) == (0, 0, 0)
@@ -385,6 +426,7 @@ async def test_ticket_status_hides_existence_from_non_owner(
         draft,
         token,
         "status-key",
+        conversation_id=ticket_context.conversation_id,
     )
 
     owner_result = await ticket_context.service.get_ticket_status(

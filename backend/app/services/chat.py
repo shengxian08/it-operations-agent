@@ -1,3 +1,4 @@
+import asyncio
 import time
 from collections.abc import AsyncIterator
 from dataclasses import asdict, dataclass
@@ -61,73 +62,91 @@ class ChatService:
             "step_count": 0,
             "trace_id": trace_id,
         }
-        yield ChatEvent("run_started", {"run_id": run_id, "message_id": message_id})
-
+        finalized = False
         try:
-            graph = build_graph(self._graph_dependencies)
-            async for updates in graph.astream(state, stream_mode="updates"):
-                for node_name, update in updates.items():
-                    state.update(update)
-                    node_history.append({"node": node_name})
-                    yield ChatEvent(
-                        "node_completed",
-                        {"node": node_name, "step_count": state.get("step_count", 0)},
-                    )
-        except Exception:
-            state.update(
-                answer="The request could not be completed. Please contact IT support.",
-                citations=[],
-                final_state="handoff",
-                handoff_reason="processing_failed",
-                error="processing_failed",
+            yield ChatEvent("run_started", {"run_id": run_id, "message_id": message_id})
+            try:
+                graph = build_graph(self._graph_dependencies)
+                async for updates in graph.astream(state, stream_mode="updates"):
+                    for node_name, update in updates.items():
+                        state.update(update)
+                        node_history.append({"node": node_name})
+                        yield ChatEvent(
+                            "node_completed",
+                            {"node": node_name, "step_count": state.get("step_count", 0)},
+                        )
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                self._set_handoff(state, "processing_failed")
+
+            citations = [asdict(citation) for citation in state.get("citations", [])]
+            draft = state.get("ticket_draft")
+            confirmation_token = state.get("confirmation_token")
+            handoff_reason = state.get("handoff_reason")
+            final_state = str(state.get("final_state", "handoff"))
+            answer = str(
+                state.get(
+                    "answer",
+                    "The request could not be completed. Please contact IT support.",
+                )
             )
+            assistant_message_id: str | None
+            try:
+                assistant_message_id = await self._finish_run(
+                    run_id=run_id,
+                    conversation_id=conversation_id,
+                    answer=answer,
+                    citations=citations,
+                    intent=state.get("intent"),
+                    final_state=final_state,
+                    handoff_reason=handoff_reason,
+                    error_type=state.get("error"),
+                    node_history=node_history,
+                    latency_ms=int((time.perf_counter() - started_at) * 1000),
+                )
+                finalized = True
+            except Exception:
+                self._set_handoff(state, "persistence_failed")
+                final_state = "handoff"
+                handoff_reason = "persistence_failed"
+                answer = str(state["answer"])
+                assistant_message_id = None
+                await self._reliably_mark_run_handoff(
+                    run_id=run_id,
+                    node_history=node_history,
+                    latency_ms=int((time.perf_counter() - started_at) * 1000),
+                )
+                finalized = True
 
-        citations = [asdict(citation) for citation in state.get("citations", [])]
-        yield ChatEvent("citations", {"citations": citations})
-
-        draft = state.get("ticket_draft")
-        confirmation_token = state.get("confirmation_token")
-        if isinstance(draft, TicketDraft) and isinstance(confirmation_token, str):
+            yield ChatEvent("citations", {"citations": citations})
+            if isinstance(draft, TicketDraft) and isinstance(confirmation_token, str):
+                yield ChatEvent(
+                    "ticket_draft",
+                    {
+                        "draft": draft.model_dump(mode="json"),
+                        "confirmation_token": confirmation_token,
+                    },
+                )
+            if isinstance(handoff_reason, str) and handoff_reason:
+                yield ChatEvent("handoff", {"reason": handoff_reason})
             yield ChatEvent(
-                "ticket_draft",
+                "final",
                 {
-                    "draft": draft.model_dump(mode="json"),
-                    "confirmation_token": confirmation_token,
+                    "run_id": run_id,
+                    "message_id": assistant_message_id,
+                    "answer": answer,
+                    "final_state": final_state,
                 },
             )
-
-        handoff_reason = state.get("handoff_reason")
-        if isinstance(handoff_reason, str) and handoff_reason:
-            yield ChatEvent("handoff", {"reason": handoff_reason})
-
-        final_state = str(state.get("final_state", "handoff"))
-        answer = str(
-            state.get(
-                "answer",
-                "The request could not be completed. Please contact IT support.",
-            )
-        )
-        assistant_message_id = await self._finish_run(
-            run_id=run_id,
-            conversation_id=conversation_id,
-            answer=answer,
-            citations=citations,
-            intent=state.get("intent"),
-            final_state=final_state,
-            handoff_reason=handoff_reason,
-            error_type=state.get("error"),
-            node_history=node_history,
-            latency_ms=int((time.perf_counter() - started_at) * 1000),
-        )
-        yield ChatEvent(
-            "final",
-            {
-                "run_id": run_id,
-                "message_id": assistant_message_id,
-                "answer": answer,
-                "final_state": final_state,
-            },
-        )
+            emitted_terminal_events = True
+        finally:
+            if not finalized:
+                await self._reliably_mark_run_handoff(
+                    run_id=run_id,
+                    node_history=node_history,
+                    latency_ms=int((time.perf_counter() - started_at) * 1000),
+                )
 
     async def confirm_ticket(
         self,
@@ -144,6 +163,7 @@ class ChatService:
             draft=draft,
             confirmation_token=confirmation_token,
             idempotency_key=idempotency_key,
+            conversation_id=conversation_id,
         )
         return result.model_dump()
 
@@ -161,10 +181,15 @@ class ChatService:
         self,
         *,
         message_id: str,
+        user_id: str,
         feedback: str,
     ) -> None:
         async with self._session_factory.begin() as session:
-            message = await session.get(Message, message_id)
+            message = await session.scalar(
+                select(Message)
+                .join(Conversation, Message.conversation_id == Conversation.id)
+                .where(Message.id == message_id, Conversation.user_id == user_id)
+            )
             if message is None:
                 raise MessageNotFoundError
             message.user_feedback = {"feedback": feedback}
@@ -245,3 +270,52 @@ class ChatService:
             run.finished_at = datetime.now(UTC)
             await session.flush()
             return assistant_message.id
+
+    async def _mark_run_handoff(
+        self,
+        *,
+        run_id: str,
+        node_history: list[dict[str, Any]],
+        latency_ms: int,
+    ) -> None:
+        async with self._session_factory.begin() as session:
+            run = await session.get(AgentRun, run_id)
+            if run is None:
+                return
+            run.status = "handoff"
+            run.final_state = "handoff"
+            run.handoff_reason = "persistence_failed"
+            run.error_type = "persistence_failed"
+            run.node_history = node_history
+            run.latency_ms = latency_ms
+            run.finished_at = datetime.now(UTC)
+
+    async def _reliably_mark_run_handoff(
+        self,
+        *,
+        run_id: str,
+        node_history: list[dict[str, Any]],
+        latency_ms: int,
+    ) -> None:
+        task = asyncio.create_task(
+            self._mark_run_handoff(
+                run_id=run_id,
+                node_history=node_history,
+                latency_ms=latency_ms,
+            )
+        )
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            await asyncio.shield(task)
+            raise
+
+    @staticmethod
+    def _set_handoff(state: dict[str, Any], reason: str) -> None:
+        state.update(
+            answer="The request could not be completed. Please contact IT support.",
+            citations=[],
+            final_state="handoff",
+            handoff_reason=reason,
+            error=reason,
+        )

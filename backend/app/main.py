@@ -120,7 +120,7 @@ def _error_response(
     code: str,
     message: str,
 ) -> JSONResponse:
-    trace_id = getattr(request.state, "trace_id", str(uuid4()))
+    trace_id = getattr(request.state, "trace_id", None) or str(uuid4())
     return JSONResponse(
         status_code=status_code,
         content={"code": code, "message": message, "trace_id": trace_id},

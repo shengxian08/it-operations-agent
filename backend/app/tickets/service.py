@@ -79,6 +79,8 @@ class TicketService:
         draft: TicketDraft,
         confirmation_token: str | None,
         idempotency_key: str,
+        *,
+        conversation_id: str,
     ) -> TicketCreateResult:
         if not confirmation_token or not confirmation_token.strip():
             raise PermissionError("confirmation token is required")
@@ -89,7 +91,11 @@ class TicketService:
             raise PermissionError("idempotency key is invalid")
 
         draft_hash = self._draft_hash(draft)
-        request_summary = self._request_summary(draft, draft_hash)
+        request_summary = self._request_summary(
+            draft,
+            draft_hash,
+            conversation_id,
+        )
         existing = await self._repository.get_by_idempotency_key(idempotency_key)
         if existing is not None:
             return self._validated_result(
@@ -104,6 +110,7 @@ class TicketService:
         confirmation = self._load_confirmation(stored_confirmation)
         if (
             confirmation.get("user_id") != user_id
+            or confirmation.get("conversation_id") != conversation_id
             or confirmation.get("draft_hash") != draft_hash
         ):
             raise PermissionError("confirmation does not match request")
@@ -151,10 +158,15 @@ class TicketService:
         return TicketService._hash_text(canonical_draft)
 
     @staticmethod
-    def _request_summary(draft: TicketDraft, draft_hash: str) -> str:
+    def _request_summary(
+        draft: TicketDraft,
+        draft_hash: str,
+        conversation_id: str,
+    ) -> str:
         return json.dumps(
             {
                 "category": draft.category,
+                "conversation_id": conversation_id,
                 "draft_hash": draft_hash,
                 "priority": draft.priority,
             },

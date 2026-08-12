@@ -1,5 +1,6 @@
 import json
 import os
+import asyncio
 from collections.abc import Generator
 from dataclasses import dataclass
 
@@ -48,6 +49,27 @@ class StaticRetriever:
                 combined_score=0.9,
             )
         ]
+
+
+class BlockingGraph:
+    def __init__(self, started: asyncio.Event, release: asyncio.Event) -> None:
+        self._started = started
+        self._release = release
+
+    async def astream(self, state, *, stream_mode):
+        del state, stream_mode
+        self._started.set()
+        await self._release.wait()
+        yield {"classify_intent": {"intent": "knowledge", "step_count": 1}}
+        yield {
+            "handoff": {
+                "answer": "No answer.",
+                "citations": [],
+                "final_state": "handoff",
+                "handoff_reason": "insufficient_evidence",
+                "step_count": 2,
+            }
+        }
 
 
 @pytest.fixture
@@ -101,6 +123,12 @@ def client() -> Generator[tuple[TestClient, ChatApiContext]]:
                 session.add(User(id="u-001", display_name="Chat API test user"))
             if await session.get(Conversation, "c-001") is None:
                 session.add(Conversation(id="c-001", user_id="u-001"))
+            if await session.get(Conversation, "c-api-owned-001") is None:
+                session.add(Conversation(id="c-api-owned-001", user_id="u-001"))
+            if await session.get(User, "u-002") is None:
+                session.add(User(id="u-002", display_name="Other chat API test user"))
+            if await session.get(Conversation, "c-other") is None:
+                session.add(Conversation(id="c-other", user_id="u-002"))
 
     async def cleanup() -> None:
         async with session_factory.begin() as session:
@@ -208,7 +236,7 @@ def test_confirmed_draft_creates_ticket_and_feedback_persists(client) -> None:
     status = test_client.get(f"/api/tickets/{ticket['ticket_number']}?user_id=u-001")
     assistant_message_id = payloads["final"]["message_id"]
     feedback = test_client.post(
-        f"/api/messages/{assistant_message_id}/feedback",
+        f"/api/messages/{assistant_message_id}/feedback?user_id=u-001",
         json={"feedback": "resolved"},
     )
 
@@ -277,3 +305,145 @@ def test_not_found_error_uses_the_trace_error_contract(client) -> None:
         "message": "Resource was not found.",
         "trace_id": "trace-404-001",
     }
+
+
+def test_confirmation_token_cannot_be_reused_for_another_owned_conversation(
+    client,
+) -> None:
+    test_client, _ = client
+    stream = test_client.post(
+        "/api/conversations/c-001/messages:stream",
+        json={"user_id": "u-001", "content": "Please create ticket for VPN outage"},
+    )
+    draft_event = dict(_sse_payloads(stream))["ticket_draft"]
+
+    response = test_client.post(
+        "/api/conversations/c-api-owned-001/ticket-confirmations",
+        json={
+            "user_id": "u-001",
+            "confirmation_token": draft_event["confirmation_token"],
+            "draft": draft_event["draft"],
+            "idempotency_key": "conversation-swap-key",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "confirmation_invalid"
+
+
+def test_feedback_is_limited_to_the_message_owner(client) -> None:
+    test_client, _ = client
+    stream = test_client.post(
+        "/api/conversations/c-001/messages:stream",
+        json={"user_id": "u-001", "content": "VPN cannot connect"},
+    )
+    message_id = dict(_sse_payloads(stream))["final"]["message_id"]
+
+    denied = test_client.post(
+        f"/api/messages/{message_id}/feedback?user_id=u-002",
+        json={"feedback": "resolved"},
+    )
+    accepted = test_client.post(
+        f"/api/messages/{message_id}/feedback?user_id=u-001",
+        json={"feedback": "resolved"},
+    )
+
+    assert denied.status_code == 404
+    assert accepted.status_code == 200
+
+
+def test_stream_failure_is_a_complete_handoff_with_final_event(client, monkeypatch) -> None:
+    test_client, context = client
+    service = app.state.chat_service
+    del context, service
+
+    def fail_to_build_graph(*args, **kwargs):
+        del args, kwargs
+        raise RuntimeError("internal graph secret")
+
+    monkeypatch.setattr("app.services.chat.build_graph", fail_to_build_graph)
+    response = test_client.post(
+        "/api/conversations/c-001/messages:stream",
+        headers={"X-Trace-Id": "trace-stream-failure"},
+        json={"user_id": "u-001", "content": "VPN cannot connect"},
+    )
+    events = _sse_payloads(response)
+
+    assert response.status_code == 200
+    assert events[-1][0] == "final"
+    assert "handoff" in [name for name, _ in events]
+    assert all(data["trace_id"] == "trace-stream-failure" for _, data in events)
+    assert "internal graph secret" not in response.text
+
+
+def test_service_cancellation_finalizes_an_existing_run(client) -> None:
+    test_client, context = client
+    service = app.state.chat_service
+
+    async def cancel_after_start() -> None:
+        events = service.stream_message(
+            user_id="u-001",
+            conversation_id="c-001",
+            content="VPN cannot connect",
+            trace_id="trace-cancelled",
+        )
+        await anext(events)
+        await events.aclose()
+
+    test_client.portal.call(cancel_after_start)
+
+    async def latest_run_status() -> str:
+        async with context.session_factory() as session:
+            run = await session.scalar(
+                select(AgentRun)
+                .where(AgentRun.trace_id == "trace-cancelled")
+                .order_by(AgentRun.created_at.desc())
+            )
+            return run.status
+
+    assert test_client.portal.call(latest_run_status) != "running"
+
+
+def test_feedback_requires_the_owner_user_id_query_parameter(client) -> None:
+    test_client, _ = client
+    response = test_client.post(
+        "/api/messages/message-id/feedback",
+        json={"feedback": "resolved"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_run_started_is_available_before_the_graph_finishes(client, monkeypatch) -> None:
+    test_client, _ = client
+
+    async def exercise() -> list[str]:
+        started = asyncio.Event()
+        release = asyncio.Event()
+        monkeypatch.setattr(
+            "app.services.chat.build_graph",
+            lambda dependencies: BlockingGraph(started, release),
+        )
+        events = app.state.chat_service.stream_message(
+            user_id="u-001",
+            conversation_id="c-001",
+            content="VPN cannot connect",
+            trace_id="trace-realtime-001",
+        )
+        first = await asyncio.wait_for(anext(events), timeout=0.1)
+        assert first.name == "run_started"
+        assert not started.is_set()
+        next_event = asyncio.create_task(anext(events))
+        await started.wait()
+        assert not next_event.done()
+        release.set()
+        names = [first.name, (await next_event).name]
+        async for event in events:
+            names.append(event.name)
+        return names
+
+    names = test_client.portal.call(exercise)
+
+    assert names[0] == "run_started"
+    assert "node_completed" in names
+    assert names[-1] == "final"
