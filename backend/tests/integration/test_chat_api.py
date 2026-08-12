@@ -1,0 +1,279 @@
+import json
+import os
+from collections.abc import Generator
+from dataclasses import dataclass
+
+import pytest
+from fastapi.testclient import TestClient
+from redis.asyncio import Redis
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from app.agent.graph import GraphDependencies
+from app.db.models import AgentRun, Conversation, Message, Ticket, TicketEvent, ToolAudit, User
+from app.llm.providers import MockChatProvider
+from app.main import app
+from app.rag.retriever import Citation, RetrievalHit
+from app.repositories.tickets import TicketRepository
+from app.services.chat import ChatService
+from app.tickets.service import TicketService
+
+
+@dataclass(frozen=True, slots=True)
+class ChatApiContext:
+    session_factory: async_sessionmaker[AsyncSession]
+
+
+class StaticRetriever:
+    async def retrieve(
+        self,
+        query: str,
+        *,
+        user_access_level: str,
+        limit: int = 5,
+    ) -> list[RetrievalHit]:
+        del query, user_access_level, limit
+        return [
+            RetrievalHit(
+                citation=Citation(
+                    document_id="test-vpn-document",
+                    source_title="VPN troubleshooting",
+                    source_path="vpn.md",
+                    chunk_index=0,
+                    excerpt="Reconnect the VPN client after checking the network.",
+                ),
+                score=0.9,
+                vector_score=0.9,
+                bm25_score=1.0,
+                combined_score=0.9,
+            )
+        ]
+
+
+@pytest.fixture
+def client() -> Generator[tuple[TestClient, ChatApiContext]]:
+    database_url = os.getenv(
+        "TEST_DATABASE_URL",
+        "postgresql+asyncpg://itops:itops-local-only@localhost:15432/itops",
+    )
+    redis = Redis.from_url(
+        os.getenv("TEST_REDIS_URL", "redis://localhost:6379/15"),
+        decode_responses=True,
+    )
+    engine = create_async_engine(database_url)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    ticket_service = TicketService(
+        TicketRepository(session_factory),
+        redis,
+        confirmation_key_prefix="test:chat-api-confirmation",
+    )
+    app.state.chat_service = ChatService(
+        session_factory,
+        GraphDependencies(
+            retriever=StaticRetriever(),
+            chat_provider=MockChatProvider(),
+            ticket_service=ticket_service,
+        ),
+        ticket_service,
+    )
+    baseline: dict[str, list[str]] = {}
+
+    async def setup() -> None:
+        async with session_factory.begin() as session:
+            baseline["message_ids"] = list(
+                (
+                    await session.scalars(
+                        select(Message.id).where(Message.conversation_id == "c-001")
+                    )
+                ).all()
+            )
+            baseline["run_ids"] = list(
+                (
+                    await session.scalars(
+                        select(AgentRun.id).where(AgentRun.conversation_id == "c-001")
+                    )
+                ).all()
+            )
+            baseline["ticket_ids"] = list(
+                (await session.scalars(select(Ticket.id).where(Ticket.user_id == "u-001"))).all()
+            )
+            if await session.get(User, "u-001") is None:
+                session.add(User(id="u-001", display_name="Chat API test user"))
+            if await session.get(Conversation, "c-001") is None:
+                session.add(Conversation(id="c-001", user_id="u-001"))
+
+    async def cleanup() -> None:
+        async with session_factory.begin() as session:
+            new_ticket_ids = select(Ticket.id).where(
+                Ticket.user_id == "u-001",
+                Ticket.id.not_in(baseline["ticket_ids"]),
+            )
+            await session.execute(delete(ToolAudit).where(ToolAudit.ticket_id.in_(new_ticket_ids)))
+            await session.execute(delete(TicketEvent).where(TicketEvent.ticket_id.in_(new_ticket_ids)))
+            await session.execute(delete(Ticket).where(Ticket.id.in_(new_ticket_ids)))
+            await session.execute(
+                delete(AgentRun).where(
+                    AgentRun.conversation_id == "c-001",
+                    AgentRun.id.not_in(baseline["run_ids"]),
+                )
+            )
+            await session.execute(
+                delete(Message).where(
+                    Message.conversation_id == "c-001",
+                    Message.id.not_in(baseline["message_ids"]),
+                )
+            )
+
+    async def teardown() -> None:
+        await cleanup()
+        await redis.aclose()
+        await engine.dispose()
+
+    with TestClient(app) as test_client:
+        test_client.portal.call(setup)
+        try:
+            yield test_client, ChatApiContext(session_factory)
+        finally:
+            test_client.portal.call(teardown)
+
+
+def _sse_payloads(response) -> list[tuple[str, dict[str, object]]]:
+    lines = [line for line in response.text.splitlines() if line]
+    return [
+        (lines[index][7:], json.loads(lines[index + 1][6:]))
+        for index in range(0, len(lines), 2)
+    ]
+
+
+def test_chat_stream_ends_with_final_event(client) -> None:
+    test_client, context = client
+    response = test_client.post(
+        "/api/conversations/c-001/messages:stream",
+        headers={"X-Trace-Id": "trace-chat-001"},
+        json={"user_id": "u-001", "content": "VPN cannot connect"},
+    )
+    events = [line for line in response.text.splitlines() if line.startswith("event:")]
+    payloads = _sse_payloads(response)
+
+    assert response.status_code == 200
+    assert response.headers["X-Trace-Id"] == "trace-chat-001"
+    assert events[0] == "event: run_started"
+    assert "event: citations" in events
+    assert events[-1] == "event: final"
+    assert all(payload["trace_id"] == "trace-chat-001" for _, payload in payloads)
+
+    final = payloads[-1][1]
+    async def persisted() -> tuple[int, int]:
+        async with context.session_factory() as session:
+            messages = await session.scalars(
+                select(Message).where(Message.conversation_id == "c-001")
+            )
+            runs = await session.scalars(
+                select(AgentRun).where(AgentRun.conversation_id == "c-001")
+            )
+            return len(list(messages)), len(list(runs))
+    assert test_client.portal.call(persisted) == (2, 1)
+    assert isinstance(final["message_id"], str)
+
+
+def test_confirm_ticket_requires_confirmation_token(client) -> None:
+    test_client, _ = client
+    response = test_client.post(
+        "/api/conversations/c-001/ticket-confirmations",
+        json={"user_id": "u-001", "draft": {}},
+    )
+    assert response.status_code == 422
+    assert response.json()["code"] == "validation_error"
+
+
+def test_confirmed_draft_creates_ticket_and_feedback_persists(client) -> None:
+    test_client, context = client
+    stream = test_client.post(
+        "/api/conversations/c-001/messages:stream",
+        json={"user_id": "u-001", "content": "Please create ticket for VPN outage"},
+    )
+    payloads = dict(_sse_payloads(stream))
+    draft = payloads["ticket_draft"]
+
+    confirmed = test_client.post(
+        "/api/conversations/c-001/ticket-confirmations",
+        json={
+            "user_id": "u-001",
+            "confirmation_token": draft["confirmation_token"],
+            "draft": draft["draft"],
+            "idempotency_key": "chat-api-ticket-001",
+        },
+    )
+    ticket = confirmed.json()
+    status = test_client.get(f"/api/tickets/{ticket['ticket_number']}?user_id=u-001")
+    assistant_message_id = payloads["final"]["message_id"]
+    feedback = test_client.post(
+        f"/api/messages/{assistant_message_id}/feedback",
+        json={"feedback": "resolved"},
+    )
+
+    assert confirmed.status_code == 201
+    assert ticket["ticket_number"].startswith("IT-")
+    assert status.status_code == 200
+    assert status.json()["ticket_number"] == ticket["ticket_number"]
+    assert feedback.status_code == 200
+
+    async def feedback_value() -> dict[str, str] | None:
+        async with context.session_factory() as session:
+            message = await session.get(Message, assistant_message_id)
+            return message.user_feedback if message else None
+    assert test_client.portal.call(feedback_value) == {"feedback": "resolved"}
+
+
+def test_errors_echo_trace_id_without_internal_details(client) -> None:
+    test_client, _ = client
+    response = test_client.post(
+        "/api/conversations/c-001/messages:stream",
+        headers={"X-Trace-Id": "trace-validation-001"},
+        json={"user_id": "u-001", "content": "", "extra": "forbidden"},
+    )
+
+    assert response.status_code == 422
+    assert response.headers["X-Trace-Id"] == "trace-validation-001"
+    assert response.json() == {
+        "code": "validation_error",
+        "message": "Request validation failed.",
+        "trace_id": "trace-validation-001",
+    }
+
+
+def test_ticket_confirmation_rejects_extra_draft_fields(client) -> None:
+    test_client, _ = client
+    response = test_client.post(
+        "/api/conversations/c-001/ticket-confirmations",
+        json={
+            "user_id": "u-001",
+            "confirmation_token": "token",
+            "idempotency_key": "key",
+            "draft": {
+                "title": "VPN",
+                "category": "network",
+                "priority": "medium",
+                "description": "VPN cannot connect",
+                "unexpected": "field",
+            },
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_not_found_error_uses_the_trace_error_contract(client) -> None:
+    test_client, _ = client
+    response = test_client.get(
+        "/api/not-a-route",
+        headers={"X-Trace-Id": "trace-404-001"},
+    )
+
+    assert response.status_code == 404
+    assert response.headers["X-Trace-Id"] == "trace-404-001"
+    assert response.json() == {
+        "code": "not_found",
+        "message": "Resource was not found.",
+        "trace_id": "trace-404-001",
+    }
