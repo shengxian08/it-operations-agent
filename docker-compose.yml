@@ -43,6 +43,9 @@ services:
   api:
     build:
       context: ./backend
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./data:/app/data:ro
     environment:
       MODEL_MODE: ${MODEL_MODE:-mock}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
