@@ -257,7 +257,7 @@ async def test_graph_looks_up_ticket_for_current_user() -> None:
         initial_state("查询工单 IT-2026-0001 的进度")
     )
 
-    assert result["final_state"] == "answered"
+    assert result["final_state"] == "ticket_status"
     assert result["ticket_number"] == "IT-2026-0001"
     assert "in_progress" in result["answer"]
     assert "工程师正在处理" in result["answer"]

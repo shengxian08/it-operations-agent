@@ -2,14 +2,23 @@ import asyncio
 import time
 from collections.abc import AsyncIterator
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agent.graph import GraphDependencies, build_graph
-from app.db.models import AgentRun, Conversation, Message
+from app.core.telemetry import (
+    ModelUsage,
+    add_model_usage,
+    bind_run,
+    consume_model_usage,
+    record_node_span,
+)
+from app.db.models import AgentRun, BadCase, Conversation, Message
+from app.llm.providers import ChatProvider, ChatResult
+from app.repositories.agent_runs import AgentRunRepository
 from app.schemas import TicketDraft
 from app.tickets.service import TicketService
 
@@ -28,6 +37,20 @@ class ChatEvent:
     data: dict[str, Any]
 
 
+class ObservableChatProvider:
+    def __init__(self, provider: ChatProvider) -> None:
+        self._provider = provider
+
+    async def complete(self, prompt: str) -> ChatResult:
+        result = await self._provider.complete(prompt)
+        add_model_usage(
+            model=result.model,
+            input_tokens=result.input_tokens,
+            output_tokens=result.output_tokens,
+        )
+        return result
+
+
 class ChatService:
     def __init__(
         self,
@@ -36,8 +59,15 @@ class ChatService:
         ticket_service: TicketService,
     ) -> None:
         self._session_factory = session_factory
-        self._graph_dependencies = graph_dependencies
+        self._graph_dependencies = GraphDependencies(
+            retriever=graph_dependencies.retriever,
+            chat_provider=ObservableChatProvider(graph_dependencies.chat_provider),
+            ticket_service=graph_dependencies.ticket_service,
+            user_access_level=graph_dependencies.user_access_level,
+            minimum_evidence_score=graph_dependencies.minimum_evidence_score,
+        )
         self._ticket_service = ticket_service
+        self._runs = AgentRunRepository(session_factory)
 
     async def stream_message(
         self,
@@ -48,11 +78,12 @@ class ChatService:
         trace_id: str,
     ) -> AsyncIterator[ChatEvent]:
         await self._require_conversation_owner(user_id, conversation_id)
-        message_id, run_id = await self._start_run(
+        started = await self._runs.start(
             conversation_id=conversation_id,
             content=content,
             trace_id=trace_id,
         )
+        message_id, run_id = started.message_id, started.run_id
         started_at = time.perf_counter()
         node_history: list[dict[str, Any]] = []
         state: dict[str, Any] = {
@@ -64,13 +95,71 @@ class ChatService:
         }
         finalized = False
         try:
-            yield ChatEvent("run_started", {"run_id": run_id, "message_id": message_id})
+            yield ChatEvent(
+                "run_started", {"run_id": run_id, "message_id": message_id}
+            )
+            with bind_run(trace_id, run_id):
+                async for event in self._process_run(
+                    run_id=run_id,
+                    conversation_id=conversation_id,
+                    state=state,
+                    node_history=node_history,
+                    started_at=started_at,
+                ):
+                    yield event
+                finalized = True
+                async for event in self._terminal_events(run_id, state):
+                    yield event
+        finally:
+            if not finalized:
+                await self._reliably_mark_run_handoff(
+                    run_id=run_id,
+                    node_history=node_history,
+                    latency_ms=int((time.perf_counter() - started_at) * 1000),
+                )
+
+    async def _process_run(
+        self,
+        *,
+        run_id: str,
+        conversation_id: str,
+        state: dict[str, Any],
+        node_history: list[dict[str, Any]],
+        started_at: float,
+    ) -> AsyncIterator[ChatEvent]:
+        try:
             try:
                 graph = build_graph(self._graph_dependencies)
                 async for updates in graph.astream(state, stream_mode="updates"):
                     for node_name, update in updates.items():
+                        node_finished = time.perf_counter()
                         state.update(update)
-                        node_history.append({"node": node_name})
+                        latency_ms = max(0, int((node_finished - started_at) * 1000) - sum(
+                            int(item["latency_ms"]) for item in node_history
+                        ))
+                        usage = consume_model_usage()
+                        result_category = self._node_result_category(update)
+                        document_ids = self._document_ids(update)
+                        ticket_number = update.get("ticket_number")
+                        node_history.append(
+                            {
+                                "node": node_name,
+                                "latency_ms": latency_ms,
+                                "result_category": result_category,
+                                "model": usage.model,
+                                "input_tokens": usage.input_tokens,
+                                "output_tokens": usage.output_tokens,
+                            }
+                        )
+                        record_node_span(
+                            node=node_name,
+                            started_ns=time.time_ns() - latency_ms * 1_000_000,
+                            latency_ms=latency_ms,
+                            result_category=result_category,
+                            document_ids=document_ids,
+                            ticket_number=str(ticket_number) if ticket_number else None,
+                            usage=usage,
+                        )
                         yield ChatEvent(
                             "node_completed",
                             {"node": node_name, "step_count": state.get("step_count", 0)},
@@ -80,7 +169,10 @@ class ChatService:
             except Exception:
                 self._set_handoff(state, "processing_failed")
 
-            citations = [asdict(citation) for citation in state.get("citations", [])]
+            citations = [
+                asdict(citation) for citation in state.get("citations", [])
+            ]
+            total_usage = self._total_usage(node_history)
             draft = state.get("ticket_draft")
             confirmation_token = state.get("confirmation_token")
             handoff_reason = state.get("handoff_reason")
@@ -93,7 +185,7 @@ class ChatService:
             )
             assistant_message_id: str | None
             try:
-                assistant_message_id = await self._finish_run(
+                assistant_message_id = await self._runs.finish(
                     run_id=run_id,
                     conversation_id=conversation_id,
                     answer=answer,
@@ -104,6 +196,9 @@ class ChatService:
                     error_type=state.get("error"),
                     node_history=node_history,
                     latency_ms=int((time.perf_counter() - started_at) * 1000),
+                    model_name=total_usage.model,
+                    input_tokens=total_usage.input_tokens,
+                    output_tokens=total_usage.output_tokens,
                 )
                 finalized = True
             except Exception:
@@ -117,36 +212,44 @@ class ChatService:
                     node_history=node_history,
                     latency_ms=int((time.perf_counter() - started_at) * 1000),
                 )
-                finalized = True
+            state["_assistant_message_id"] = assistant_message_id
+            state["answer"] = answer
+            state["final_state"] = final_state
+            state["handoff_reason"] = handoff_reason
+            state["citations"] = citations
+            state["ticket_draft"] = draft
+            state["confirmation_token"] = confirmation_token
+        except asyncio.CancelledError:
+            raise
 
-            yield ChatEvent("citations", {"citations": citations})
-            if isinstance(draft, TicketDraft) and isinstance(confirmation_token, str):
-                yield ChatEvent(
-                    "ticket_draft",
-                    {
-                        "draft": draft.model_dump(mode="json"),
-                        "confirmation_token": confirmation_token,
-                    },
-                )
-            if isinstance(handoff_reason, str) and handoff_reason:
-                yield ChatEvent("handoff", {"reason": handoff_reason})
+    @staticmethod
+    async def _terminal_events(
+        run_id: str, state: dict[str, Any]
+    ) -> AsyncIterator[ChatEvent]:
+        citations = state.get("citations", [])
+        draft = state.get("ticket_draft")
+        confirmation_token = state.get("confirmation_token")
+        handoff_reason = state.get("handoff_reason")
+        yield ChatEvent("citations", {"citations": citations})
+        if isinstance(draft, TicketDraft) and isinstance(confirmation_token, str):
             yield ChatEvent(
-                "final",
+                "ticket_draft",
                 {
-                    "run_id": run_id,
-                    "message_id": assistant_message_id,
-                    "answer": answer,
-                    "final_state": final_state,
+                    "draft": draft.model_dump(mode="json"),
+                    "confirmation_token": confirmation_token,
                 },
             )
-            emitted_terminal_events = True
-        finally:
-            if not finalized:
-                await self._reliably_mark_run_handoff(
-                    run_id=run_id,
-                    node_history=node_history,
-                    latency_ms=int((time.perf_counter() - started_at) * 1000),
-                )
+        if isinstance(handoff_reason, str) and handoff_reason:
+            yield ChatEvent("handoff", {"reason": handoff_reason})
+        yield ChatEvent(
+            "final",
+            {
+                "run_id": run_id,
+                "message_id": state.get("_assistant_message_id"),
+                "answer": state["answer"],
+                "final_state": state["final_state"],
+            },
+        )
 
     async def confirm_ticket(
         self,
@@ -156,6 +259,7 @@ class ChatService:
         draft: TicketDraft,
         confirmation_token: str,
         idempotency_key: str,
+        trace_id: str | None = None,
     ) -> dict[str, str]:
         await self._require_conversation_owner(user_id, conversation_id)
         result = await self._ticket_service.create_confirmed(
@@ -164,6 +268,7 @@ class ChatService:
             confirmation_token=confirmation_token,
             idempotency_key=idempotency_key,
             conversation_id=conversation_id,
+            request_trace_id=trace_id,
         )
         return result.model_dump()
 
@@ -193,6 +298,30 @@ class ChatService:
             if message is None:
                 raise MessageNotFoundError
             message.user_feedback = {"feedback": feedback}
+            if feedback == "unresolved":
+                run = await session.scalar(
+                    select(AgentRun).where(AgentRun.result_message_id == message.id)
+                )
+                if run is not None:
+                    citation_ids = sorted(
+                        {
+                            str(citation["document_id"])
+                            for citation in message.citations
+                            if citation.get("document_id")
+                        }
+                    )
+                    await session.execute(
+                        insert(BadCase)
+                        .values(
+                            assistant_message_id=message.id,
+                            agent_run_id=run.id,
+                            trace_id=run.trace_id,
+                            final_state=run.final_state,
+                            citation_ids=citation_ids,
+                            reason="user_unresolved",
+                        )
+                        .on_conflict_do_nothing(index_elements=["assistant_message_id"])
+                    )
 
     async def _require_conversation_owner(
         self,
@@ -206,71 +335,6 @@ class ChatService:
         if owner_id != user_id:
             raise ConversationNotFoundError
 
-    async def _start_run(
-        self,
-        *,
-        conversation_id: str,
-        content: str,
-        trace_id: str,
-    ) -> tuple[str, str]:
-        async with self._session_factory.begin() as session:
-            message = Message(
-                conversation_id=conversation_id,
-                role="user",
-                content=content,
-                citations=[],
-            )
-            session.add(message)
-            await session.flush()
-            run = AgentRun(
-                conversation_id=conversation_id,
-                message_id=message.id,
-                status="running",
-                trace_id=trace_id,
-                node_history=[],
-            )
-            session.add(run)
-            await session.flush()
-            return message.id, run.id
-
-    async def _finish_run(
-        self,
-        *,
-        run_id: str,
-        conversation_id: str,
-        answer: str,
-        citations: list[dict[str, Any]],
-        intent: Any,
-        final_state: str,
-        handoff_reason: Any,
-        error_type: Any,
-        node_history: list[dict[str, Any]],
-        latency_ms: int,
-    ) -> str:
-        async with self._session_factory.begin() as session:
-            run = await session.get(AgentRun, run_id)
-            if run is None:
-                raise RuntimeError("agent run is missing")
-            assistant_message = Message(
-                conversation_id=conversation_id,
-                role="assistant",
-                content=answer,
-                citations=citations,
-            )
-            session.add(assistant_message)
-            run.status = "completed" if final_state != "handoff" else "handoff"
-            run.intent = str(intent) if intent is not None else None
-            run.final_state = final_state
-            run.node_history = node_history
-            run.latency_ms = latency_ms
-            run.handoff_reason = (
-                str(handoff_reason) if handoff_reason is not None else None
-            )
-            run.error_type = str(error_type) if error_type is not None else None
-            run.finished_at = datetime.now(UTC)
-            await session.flush()
-            return assistant_message.id
-
     async def _mark_run_handoff(
         self,
         *,
@@ -278,17 +342,11 @@ class ChatService:
         node_history: list[dict[str, Any]],
         latency_ms: int,
     ) -> None:
-        async with self._session_factory.begin() as session:
-            run = await session.get(AgentRun, run_id)
-            if run is None:
-                return
-            run.status = "handoff"
-            run.final_state = "handoff"
-            run.handoff_reason = "persistence_failed"
-            run.error_type = "persistence_failed"
-            run.node_history = node_history
-            run.latency_ms = latency_ms
-            run.finished_at = datetime.now(UTC)
+        await self._runs.handoff(
+            run_id=run_id,
+            node_history=node_history,
+            latency_ms=latency_ms,
+        )
 
     async def _reliably_mark_run_handoff(
         self,
@@ -318,4 +376,32 @@ class ChatService:
             final_state="handoff",
             handoff_reason=reason,
             error=reason,
+        )
+
+    @staticmethod
+    def _node_result_category(update: dict[str, Any]) -> str:
+        if update.get("error"):
+            return "error"
+        if update.get("final_state"):
+            return str(update["final_state"])
+        return "completed"
+
+    @staticmethod
+    def _document_ids(update: dict[str, Any]) -> list[str]:
+        hits = update.get("retrieval_hits", [])
+        return sorted(
+            {
+                str(hit.citation.document_id)
+                for hit in hits
+                if getattr(getattr(hit, "citation", None), "document_id", None)
+            }
+        )
+
+    @staticmethod
+    def _total_usage(node_history: list[dict[str, Any]]) -> ModelUsage:
+        models = [str(item["model"]) for item in node_history if item.get("model")]
+        return ModelUsage(
+            model=models[-1] if models else None,
+            input_tokens=sum(int(item.get("input_tokens", 0)) for item in node_history),
+            output_tokens=sum(int(item.get("output_tokens", 0)) for item in node_history),
         )

@@ -5,7 +5,12 @@ from app.schemas import TicketDraft
 
 
 AgentIntent = Literal["knowledge", "ticket_lookup", "ticket_create"]
-FinalState = Literal["answered", "awaiting_confirmation", "handoff"]
+FinalState = Literal[
+    "answered",
+    "ticket_status",
+    "awaiting_confirmation",
+    "handoff",
+]
 
 
 class AgentState(TypedDict):

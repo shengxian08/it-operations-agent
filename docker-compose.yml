@@ -46,6 +46,7 @@ services:
     volumes:
       - ./scripts:/app/scripts:ro
       - ./data:/app/data:ro
+      - ./docs:/app/docs
     environment:
       MODEL_MODE: ${MODEL_MODE:-mock}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
@@ -54,6 +55,9 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://itops:itops-local-only@postgres:5432/itops}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      TEST_DATABASE_URL: postgresql+asyncpg://itops:itops-local-only@postgres:5432/itops
+      TEST_REDIS_URL: redis://redis:6379/15
+      TEST_QDRANT_URL: http://qdrant:6333
     ports:
       - "18000:8000"
     depends_on:
@@ -80,6 +84,8 @@ services:
       context: ./frontend
     ports:
       - "5173:5173"
+    environment:
+      VITE_API_PROXY_TARGET: http://api:8000
     depends_on:
       api:
         condition: service_healthy

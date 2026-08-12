@@ -49,10 +49,21 @@ class TicketService:
         self,
         conversation_id: str,
         draft: TicketDraft,
+        *,
+        trace_id: str | None = None,
+        run_id: str | None = None,
     ) -> str:
         user_id = await self._repository.get_conversation_user_id(conversation_id)
         if user_id is None:
             raise PermissionError("conversation is not available")
+
+        if trace_id is None or run_id is None:
+            from app.core.telemetry import current_run_context
+
+            context_trace_id, context_run_id = current_run_context()
+            trace_id = trace_id or context_trace_id
+            run_id = run_id or context_run_id
+        trace_id = trace_id or f"ticket-create-{uuid4()}"
 
         token = secrets.token_urlsafe(32)
         token_hash = self._hash_text(token)
@@ -61,6 +72,8 @@ class TicketService:
                 "conversation_id": conversation_id,
                 "user_id": user_id,
                 "draft_hash": self._draft_hash(draft),
+                "trace_id": trace_id,
+                "run_id": run_id,
             },
             ensure_ascii=True,
             sort_keys=True,
@@ -81,6 +94,7 @@ class TicketService:
         idempotency_key: str,
         *,
         conversation_id: str,
+        request_trace_id: str | None = None,
     ) -> TicketCreateResult:
         if not confirmation_token or not confirmation_token.strip():
             raise PermissionError("confirmation token is required")
@@ -102,6 +116,7 @@ class TicketService:
                 existing,
                 user_id=user_id,
                 request_summary=request_summary,
+                request_trace_id=request_trace_id,
             )
 
         token_hash = self._hash_text(confirmation_token)
@@ -112,6 +127,12 @@ class TicketService:
             confirmation.get("user_id") != user_id
             or confirmation.get("conversation_id") != conversation_id
             or confirmation.get("draft_hash") != draft_hash
+            or not isinstance(confirmation.get("trace_id"), str)
+            or (
+                confirmation.get("run_id") is not None
+                and not isinstance(confirmation.get("run_id"), str)
+            )
+            or (request_trace_id is not None and confirmation["trace_id"] != request_trace_id)
         ):
             raise PermissionError("confirmation does not match request")
 
@@ -125,12 +146,14 @@ class TicketService:
             request_summary=request_summary,
             confirmation_token_hash=token_hash,
             idempotency_key=idempotency_key,
-            trace_id=f"ticket-create-{uuid4()}",
+            trace_id=confirmation["trace_id"],
+            agent_run_id=confirmation["run_id"],
         )
         return self._validated_result(
             stored,
             user_id=user_id,
             request_summary=request_summary,
+            request_trace_id=request_trace_id,
         )
 
     @staticmethod
@@ -139,8 +162,13 @@ class TicketService:
         *,
         user_id: str,
         request_summary: str,
+        request_trace_id: str | None,
     ) -> TicketCreateResult:
-        if stored.user_id != user_id or stored.request_summary != request_summary:
+        if (
+            stored.user_id != user_id
+            or stored.request_summary != request_summary
+            or (request_trace_id is not None and stored.trace_id != request_trace_id)
+        ):
             raise PermissionError("idempotency key does not match request")
         return TicketCreateResult(
             ticket_number=stored.ticket_number,

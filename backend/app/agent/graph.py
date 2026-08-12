@@ -201,7 +201,7 @@ def build_graph(
         return {
             "ticket_number": ticket_number,
             "answer": _ticket_status_answer(status),
-            "final_state": "answered",
+            "final_state": "ticket_status",
             "tool_history": _append_history(
                 state,
                 {
@@ -535,6 +535,7 @@ def _validate_initial_state(state: AgentState) -> str | None:
         not isinstance(final_state, str)
         or final_state not in {
             "answered",
+            "ticket_status",
             "awaiting_confirmation",
             "handoff",
         }

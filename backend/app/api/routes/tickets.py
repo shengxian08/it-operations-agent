@@ -38,6 +38,7 @@ def get_chat_service(request: Request) -> ChatService:
 async def confirm_ticket(
     conversation_id: str,
     payload: TicketConfirmationRequest,
+    request: Request,
     service: Annotated[ChatService, Depends(get_chat_service)],
 ) -> dict[str, str]:
     try:
@@ -47,6 +48,7 @@ async def confirm_ticket(
             draft=payload.draft,
             confirmation_token=payload.confirmation_token,
             idempotency_key=payload.idempotency_key,
+            trace_id=request.state.trace_id,
         )
     except ConversationNotFoundError as error:
         raise ApiProblem(404, "conversation_not_found", "Conversation was not found.") from error

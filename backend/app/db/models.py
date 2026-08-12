@@ -93,6 +93,9 @@ class AgentRun(Base):
     message_id: Mapped[str | None] = mapped_column(
         ForeignKey("messages.id", ondelete="SET NULL"), nullable=True
     )
+    result_message_id: Mapped[str | None] = mapped_column(
+        ForeignKey("messages.id", ondelete="SET NULL"), nullable=True, unique=True
+    )
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, server_default="running"
     )
@@ -109,6 +112,7 @@ class AgentRun(Base):
     output_tokens: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="0"
     )
+    model_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     handoff_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -193,6 +197,31 @@ class ToolAudit(Base):
     )
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
     trace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class BadCase(Base):
+    __tablename__ = "bad_cases"
+    __table_args__ = (
+        Index("uq_bad_cases_assistant_message_id", "assistant_message_id", unique=True),
+        Index("ix_bad_cases_trace_id", "trace_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
+    assistant_message_id: Mapped[str] = mapped_column(
+        ForeignKey("messages.id", ondelete="CASCADE"), nullable=False
+    )
+    agent_run_id: Mapped[str] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False
+    )
+    trace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    final_state: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    citation_ids: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    reason: Mapped[str] = mapped_column(String(100), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

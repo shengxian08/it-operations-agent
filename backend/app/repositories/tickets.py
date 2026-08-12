@@ -5,6 +5,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db.models import Conversation, Ticket, TicketEvent, ToolAudit
+from app.core.telemetry import redact_sensitive
 from app.schemas import TicketDraft
 
 
@@ -14,6 +15,8 @@ class StoredTicket:
     status: str
     user_id: str
     request_summary: str
+    trace_id: str
+    agent_run_id: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,6 +89,7 @@ class TicketRepository:
         confirmation_token_hash: str,
         idempotency_key: str,
         trace_id: str,
+        agent_run_id: str | None,
     ) -> StoredTicket:
         async with self._session_factory.begin() as session:
             await session.execute(
@@ -136,7 +140,8 @@ class TicketRepository:
                     ToolAudit(
                         ticket_id=ticket.id,
                         tool_name="create_ticket",
-                        request_summary=request_summary,
+                        agent_run_id=agent_run_id,
+                        request_summary=redact_sensitive(request_summary),
                         result_category="created",
                         confirmation_token_hash=confirmation_token_hash,
                         idempotency_key=idempotency_key,
@@ -150,6 +155,8 @@ class TicketRepository:
                 status=ticket.status,
                 user_id=ticket.user_id,
                 request_summary=request_summary,
+                trace_id=trace_id,
+                agent_run_id=agent_run_id,
             )
 
     @staticmethod
@@ -174,6 +181,8 @@ class TicketRepository:
             status=ticket.status,
             user_id=ticket.user_id,
             request_summary=audit.request_summary,
+            trace_id=audit.trace_id,
+            agent_run_id=audit.agent_run_id,
         )
 
     @staticmethod

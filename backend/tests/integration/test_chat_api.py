@@ -11,7 +11,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.agent.graph import GraphDependencies
-from app.db.models import AgentRun, Conversation, Message, Ticket, TicketEvent, ToolAudit, User
+from app.db.models import AgentRun, BadCase, Conversation, Message, Ticket, TicketEvent, ToolAudit, User
 from app.llm.providers import MockChatProvider
 from app.main import app
 from app.rag.retriever import Citation, RetrievalHit
@@ -23,6 +23,7 @@ from app.tickets.service import TicketService
 @dataclass(frozen=True, slots=True)
 class ChatApiContext:
     session_factory: async_sessionmaker[AsyncSession]
+    baseline: dict[str, list[str]]
 
 
 class StaticRetriever:
@@ -99,6 +100,7 @@ def client() -> Generator[tuple[TestClient, ChatApiContext]]:
         ticket_service,
     )
     baseline: dict[str, list[str]] = {}
+    context = ChatApiContext(session_factory, baseline)
 
     async def setup() -> None:
         async with session_factory.begin() as session:
@@ -140,6 +142,14 @@ def client() -> Generator[tuple[TestClient, ChatApiContext]]:
             await session.execute(delete(TicketEvent).where(TicketEvent.ticket_id.in_(new_ticket_ids)))
             await session.execute(delete(Ticket).where(Ticket.id.in_(new_ticket_ids)))
             await session.execute(
+                delete(BadCase).where(BadCase.agent_run_id.in_(
+                    select(AgentRun.id).where(
+                        AgentRun.conversation_id == "c-001",
+                        AgentRun.id.not_in(baseline["run_ids"]),
+                    )
+                ))
+            )
+            await session.execute(
                 delete(AgentRun).where(
                     AgentRun.conversation_id == "c-001",
                     AgentRun.id.not_in(baseline["run_ids"]),
@@ -160,7 +170,7 @@ def client() -> Generator[tuple[TestClient, ChatApiContext]]:
     with TestClient(app) as test_client:
         test_client.portal.call(setup)
         try:
-            yield test_client, ChatApiContext(session_factory)
+            yield test_client, context
         finally:
             test_client.portal.call(teardown)
 
@@ -200,7 +210,11 @@ def test_chat_stream_ends_with_final_event(client) -> None:
                 select(AgentRun).where(AgentRun.conversation_id == "c-001")
             )
             return len(list(messages)), len(list(runs))
-    assert test_client.portal.call(persisted) == (2, 1)
+    expected_counts = (
+        len(context.baseline["message_ids"]) + 2,
+        len(context.baseline["run_ids"]) + 1,
+    )
+    assert test_client.portal.call(persisted) == expected_counts
     assert isinstance(final["message_id"], str)
 
 
@@ -218,6 +232,7 @@ def test_confirmed_draft_creates_ticket_and_feedback_persists(client) -> None:
     test_client, context = client
     stream = test_client.post(
         "/api/conversations/c-001/messages:stream",
+        headers={"X-Trace-Id": "trace-confirmed-ticket"},
         json={"user_id": "u-001", "content": "Please create ticket for VPN outage"},
     )
     payloads = dict(_sse_payloads(stream))
@@ -225,6 +240,7 @@ def test_confirmed_draft_creates_ticket_and_feedback_persists(client) -> None:
 
     confirmed = test_client.post(
         "/api/conversations/c-001/ticket-confirmations",
+        headers={"X-Trace-Id": "trace-confirmed-ticket"},
         json={
             "user_id": "u-001",
             "confirmation_token": draft["confirmation_token"],
@@ -313,12 +329,14 @@ def test_confirmation_token_cannot_be_reused_for_another_owned_conversation(
     test_client, _ = client
     stream = test_client.post(
         "/api/conversations/c-001/messages:stream",
+        headers={"X-Trace-Id": "trace-conversation-swap"},
         json={"user_id": "u-001", "content": "Please create ticket for VPN outage"},
     )
     draft_event = dict(_sse_payloads(stream))["ticket_draft"]
 
     response = test_client.post(
         "/api/conversations/c-api-owned-001/ticket-confirmations",
+        headers={"X-Trace-Id": "trace-conversation-swap"},
         json={
             "user_id": "u-001",
             "confirmation_token": draft_event["confirmation_token"],

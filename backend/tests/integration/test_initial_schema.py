@@ -18,6 +18,7 @@ REQUIRED_TABLES = {
     "tool_audits",
     "knowledge_documents",
     "knowledge_chunks",
+    "bad_cases",
 }
 
 
@@ -49,6 +50,8 @@ def test_model_metadata_declares_required_tables_and_fields() -> None:
         "input_tokens",
         "output_tokens",
         "handoff_reason",
+        "result_message_id",
+        "model_name",
     } <= run_columns
 
 

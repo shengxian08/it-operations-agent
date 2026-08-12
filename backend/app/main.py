@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -11,6 +9,7 @@ from app.agent.graph import GraphDependencies
 from app.api.routes import chat, tickets
 from app.api.routes.tickets import ApiProblem
 from app.core.config import get_settings
+from app.core.telemetry import get_or_create_trace_id, log_json
 from app.db.session import async_session_factory
 from app.llm.providers import MockChatProvider, OpenAICompatibleProvider
 from app.rag.ingest import DeterministicEmbedder
@@ -56,10 +55,16 @@ app.state.chat_service = _build_chat_service()
 
 @app.middleware("http")
 async def attach_trace_id(request: Request, call_next):  # type: ignore[no-untyped-def]
-    received_trace_id = request.headers.get("X-Trace-Id", "").strip()
-    request.state.trace_id = received_trace_id or str(uuid4())
+    request.state.trace_id = get_or_create_trace_id(request)
     response = await call_next(request)
     response.headers["X-Trace-Id"] = request.state.trace_id
+    log_json(
+        "http_request_completed",
+        trace_id=request.state.trace_id,
+        method=request.method,
+        path=request.url.path,
+        status_code=response.status_code,
+    )
     return response
 
 
@@ -120,7 +125,7 @@ def _error_response(
     code: str,
     message: str,
 ) -> JSONResponse:
-    trace_id = getattr(request.state, "trace_id", None) or str(uuid4())
+    trace_id = get_or_create_trace_id(request)
     return JSONResponse(
         status_code=status_code,
         content={"code": code, "message": message, "trace_id": trace_id},
