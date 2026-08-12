@@ -1,0 +1,111 @@
+{
+  "users": [
+    {
+      "id": "u-001",
+      "display_name": "演示员工甲",
+      "access_level": "employee"
+    },
+    {
+      "id": "u-002",
+      "display_name": "演示员工乙",
+      "access_level": "employee"
+    }
+  ],
+  "conversations": [
+    {
+      "id": "c-001",
+      "user_id": "u-001",
+      "summary": "演示员工甲的 IT 支持会话"
+    },
+    {
+      "id": "c-002",
+      "user_id": "u-002",
+      "summary": "演示员工乙的 IT 支持会话"
+    }
+  ],
+  "ticket_generation": {
+    "year": 2026,
+    "count": 100,
+    "start_date": "2026-01-06T09:00:00+00:00",
+    "owner_ids": ["u-001", "u-002"],
+    "statuses": ["pending", "in_progress", "resolved", "closed"],
+    "status_updates": {
+      "pending": "工单已受理，等待 IT 支持分派。",
+      "in_progress": "IT 支持正在处理并核对相关配置。",
+      "resolved": "问题已解决，等待用户确认结果。",
+      "closed": "用户已确认恢复，工单已关闭。"
+    },
+    "templates": [
+      {
+        "title": "VPN 客户端无法连接",
+        "category": "network",
+        "priority": "medium",
+        "description": "连接公司 VPN 时提示身份验证失败。",
+        "attempted_steps": ["重新输入密码", "重启 VPN 客户端"]
+      },
+      {
+        "title": "办公账号被锁定",
+        "category": "account",
+        "priority": "high",
+        "description": "多次登录失败后办公账号进入锁定状态。",
+        "attempted_steps": ["等待十五分钟后重试"]
+      },
+      {
+        "title": "打印机无法输出文档",
+        "category": "device",
+        "priority": "low",
+        "description": "楼层打印机显示在线但任务一直停留在队列中。",
+        "attempted_steps": ["清空打印队列", "重新连接打印机"]
+      },
+      {
+        "title": "申请项目共享目录权限",
+        "category": "access",
+        "priority": "medium",
+        "description": "需要访问项目共享目录以读取协作文档。",
+        "attempted_steps": ["确认目录地址", "联系项目负责人"]
+      },
+      {
+        "title": "视频会议没有声音",
+        "category": "software",
+        "priority": "high",
+        "description": "加入视频会议后扬声器与麦克风均无声音。",
+        "attempted_steps": ["检查系统音量", "重新选择音频设备"]
+      },
+      {
+        "title": "无线网络频繁断开",
+        "category": "network",
+        "priority": "medium",
+        "description": "办公区无线网络每隔数分钟自动断开。",
+        "attempted_steps": ["忘记网络后重新连接", "移动到其他工位测试"]
+      },
+      {
+        "title": "软件安装被策略阻止",
+        "category": "software",
+        "priority": "low",
+        "description": "安装已批准的办公软件时提示需要管理员权限。",
+        "attempted_steps": ["确认软件来源", "重新下载安装包"]
+      },
+      {
+        "title": "邮箱无法同步新邮件",
+        "category": "account",
+        "priority": "medium",
+        "description": "桌面邮箱客户端无法同步当天的新邮件。",
+        "attempted_steps": ["检查网络", "手动执行发送和接收"]
+      },
+      {
+        "title": "显示器扩展模式异常",
+        "category": "device",
+        "priority": "low",
+        "description": "外接显示器只能镜像，无法启用扩展桌面。",
+        "attempted_steps": ["重新插拔视频线", "检测显示器"]
+      },
+      {
+        "title": "内部系统页面无法访问",
+        "category": "access",
+        "priority": "critical",
+        "description": "浏览器访问内部业务系统时持续返回无权限页面。",
+        "attempted_steps": ["确认 VPN 已连接", "清理浏览器缓存"]
+      }
+    ]
+  }
+}
