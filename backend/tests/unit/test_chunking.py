@@ -91,6 +91,7 @@ def test_extract_text_reads_pdf_fixture() -> None:
     assert "VPN-720" in extracted
     assert "证书" in extracted
     assert "何时转人工" in extracted
+    assert len(chunk_markdown(extracted, source_path=fixture_path.name)) <= 3
 
 
 def test_extract_text_rejects_empty_markdown(tmp_path: Path) -> None:

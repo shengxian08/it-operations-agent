@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
-
+from sqlalchemy import event
 import pytest
 import pytest_asyncio
 from pydantic import ValidationError
@@ -22,6 +22,7 @@ from app.db.models import Conversation, Ticket, TicketEvent, ToolAudit, User
 from app.repositories.tickets import TicketRepository
 from app.schemas import TicketDraft
 from app.tickets.service import TicketService
+from app.api.routes.tickets import ApiProblem
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,11 +127,45 @@ def ticket_draft(**changes: object) -> TicketDraft:
         "title": "VPN 无法连接",
         "category": "network",
         "priority": "medium",
-        "description": "客户端提示身份验证失败",
+        "description": "客户端提示身份验证失败\n影响范围：仅本人",
         "attempted_steps": ["重新输入密码", "重启 VPN 客户端"],
+        "problem": "客户端提示身份验证失败",
+        "impact": "仅本人",
+        "intake_version": 1,
     }
     values.update(changes)
     return TicketDraft.model_validate(values)
+
+
+@pytest.mark.asyncio
+async def test_incomplete_draft_cannot_receive_confirmation_or_create_ticket(ticket_context):
+    incomplete = TicketDraft(title="默认故障", category="other", priority="medium", description="默认描述")
+    before = await write_counts(ticket_context)
+    with pytest.raises(PermissionError):
+        await ticket_context.service.issue_confirmation_token(ticket_context.conversation_id, incomplete)
+    assert await write_counts(ticket_context) == before
+
+
+@pytest.mark.asyncio
+async def test_legacy_token_for_incomplete_draft_cannot_create_ticket(ticket_context):
+    complete = TicketDraft(title="VPN故障", category="network", priority="medium",
+        description="VPN错误E42\n影响范围：仅本人", attempted_steps=[],
+        problem="VPN错误E42", impact="仅本人", intake_version=1)
+    token = await ticket_context.service.issue_confirmation_token(ticket_context.conversation_id, complete)
+    incomplete = complete.model_copy(update={"problem": None, "impact": None, "intake_version": None})
+    key = ticket_context.service._confirmation_key(ticket_context.service._hash_text(token))
+    stored = json.loads(await ticket_context.redis.get(key))
+    stored["draft_hash"] = ticket_context.service._draft_hash(incomplete)
+    await ticket_context.redis.set(key, json.dumps(stored), ex=600)
+    before = await write_counts(ticket_context)
+    with pytest.raises(PermissionError):
+        await ticket_context.service.create_confirmed(ticket_context.owner_id, incomplete,
+            token, "legacy-incomplete", conversation_id=ticket_context.conversation_id)
+    assert await write_counts(ticket_context) == before
+    with pytest.raises(PermissionError):
+        await ticket_context.service.create_confirmed(ticket_context.owner_id, incomplete,
+            "legacy-token", "incomplete-draft", conversation_id=ticket_context.conversation_id)
+    assert await write_counts(ticket_context) == before
 
 
 async def write_counts(context: TicketTestContext) -> tuple[int, int, int]:
@@ -154,6 +189,31 @@ async def write_counts(context: TicketTestContext) -> tuple[int, int, int]:
             )
         )
     return int(tickets or 0), int(events or 0), int(audits or 0)
+@pytest.mark.asyncio
+async def test_create_ticket_rolls_back_when_audit_write_fails(ticket_context: TicketTestContext):
+    before = await write_counts(ticket_context)
+    draft = ticket_draft()
+    token = await ticket_context.service.issue_confirmation_token(ticket_context.conversation_id, draft)
+    def fail_audit_insert(mapper, connection, target):
+        raise RuntimeError("forced audit insert failure")
+    event.listen(ToolAudit, "before_insert", fail_audit_insert)
+    try:
+        with pytest.raises(RuntimeError, match="forced audit insert failure"):
+            await ticket_context.service.create_confirmed(
+                ticket_context.owner_id,
+                draft,
+                token,
+                "forced-audit-failure-key",
+                conversation_id=ticket_context.conversation_id,
+            )
+    finally:
+        event.remove(ToolAudit, "before_insert", fail_audit_insert)
+
+    # 这里再检查数据库记录数
+    after = await write_counts(ticket_context)
+    # 在这里补上数据库记录数的断言
+    assert before == after, f"Expected no changes in database records, but found before: {before}, after: {after}"
+
 
 
 def test_ticket_draft_is_deeply_immutable() -> None:
@@ -212,7 +272,7 @@ async def test_confirmation_token_is_bound_to_exact_draft_without_writes(
     ticket_context: TicketTestContext,
 ) -> None:
     original = ticket_draft()
-    changed = ticket_draft(description="被修改后的问题描述")
+    changed = ticket_draft(problem="被修改后的问题描述", description="被修改后的问题描述\n影响范围：仅本人")
     token = await ticket_context.service.issue_confirmation_token(
         ticket_context.conversation_id,
         original,
@@ -323,6 +383,7 @@ async def test_create_ticket_is_idempotent_and_writes_complete_audit_trail(
         conversation_id=ticket_context.conversation_id,
     )
 
+
     assert first == second
     number_prefix, number_year, number_sequence = first.ticket_number.split("-")
     assert number_prefix == "IT"
@@ -343,6 +404,7 @@ async def test_create_ticket_is_idempotent_and_writes_complete_audit_trail(
     assert audit.confirmation_token_hash
     assert draft.title not in audit.request_summary
     assert draft.description not in audit.request_summary
+
 
 
 @pytest.mark.asyncio

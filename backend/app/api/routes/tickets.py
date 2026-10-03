@@ -1,9 +1,9 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request,Path
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas import TicketDraft
+from app.schemas import TicketDraft, TicketStatusResult
 from app.services.chat import ChatService, ConversationNotFoundError
 
 
@@ -58,14 +58,14 @@ async def confirm_ticket(
 
 @router.get("/tickets/{ticket_number}")
 async def get_ticket(
-    ticket_number: str,
+    ticket_number: Annotated[str, Path(max_length=64)],
     user_id: Annotated[str, Query(min_length=1, max_length=64)],
     service: Annotated[ChatService, Depends(get_chat_service)],
-) -> dict[str, str | bool | None]:
+) -> TicketStatusResult:
     result = await service.get_ticket_status(
         user_id=user_id,
         ticket_number=ticket_number,
     )
     if not result["found"]:
         raise ApiProblem(404, "ticket_not_found", "Ticket was not found.")
-    return result
+    return TicketStatusResult.model_validate(result)

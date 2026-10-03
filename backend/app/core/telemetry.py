@@ -2,6 +2,8 @@ import json
 import logging
 import re
 import time
+import traceback
+from logging.handlers import TimedRotatingFileHandler
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -36,6 +38,8 @@ _SAFE_LOG_FIELDS = {
     "method",
     "path",
     "status_code",
+    "error_type",
+    "stack",
 }
 
 
@@ -44,6 +48,7 @@ class ModelUsage:
     model: str | None = None
     input_tokens: int = 0
     output_tokens: int = 0
+    usage_uncertain: bool = False
 
 
 @dataclass(slots=True)
@@ -51,6 +56,7 @@ class _ModelUsageCollector:
     model: str | None = None
     input_tokens: int = 0
     output_tokens: int = 0
+    usage_uncertain: bool = False
 
 
 _trace_id: ContextVar[str | None] = ContextVar("agent_trace_id", default=None)
@@ -86,6 +92,49 @@ def log_json(event: str, **fields: Any) -> None:
     logger.info(json.dumps(payload, ensure_ascii=True, separators=(",", ":")))
 
 
+class JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        try:
+            payload = json.loads(record.getMessage())
+            if not isinstance(payload, dict):
+                payload = {"event":"application_log"}
+        except (ValueError, TypeError):
+            # Third party log messages can contain SQL params/prompts: never forward raw text.
+            payload = {"event":"application_log", "logger":record.name}
+        payload["level"] = record.levelname
+        payload["timestamp"] = record.created
+        return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+def configure_telemetry(settings: Any) -> None:
+    handler = logging.StreamHandler()
+    handler.setFormatter(JsonFormatter())
+    application_logger = logging.getLogger("app")
+    application_logger.handlers[:] = [handler]
+    if settings.log_directory:
+        settings.log_directory.mkdir(parents=True,exist_ok=True)
+        file_handler = TimedRotatingFileHandler(settings.log_directory / f"{settings.runtime_role}.log",
+            when="midnight",backupCount=30,encoding="utf-8",utc=True)
+        file_handler.setFormatter(JsonFormatter())
+        application_logger.addHandler(file_handler)
+    application_logger.setLevel(settings.log_level)
+    application_logger.propagate = False
+    if settings.otel_exporter_otlp_endpoint:
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        provider = TracerProvider()
+        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=settings.otel_exporter_otlp_endpoint.rstrip("/") + "/v1/traces")))
+        trace.set_tracer_provider(provider)
+
+
+def log_exception(event: str, error: Exception, *, trace_id: str) -> None:
+    # Keep stack locations, omit exception text/SQL parameters and local variables.
+    stack = [{"file":frame.filename.rsplit("/",1)[-1].rsplit("\\",1)[-1], "line":frame.lineno, "function":frame.name}
+             for frame in traceback.extract_tb(error.__traceback__)]
+    log_json(event, trace_id=trace_id, error_type=type(error).__name__, stack=json.dumps(stack))
+
+
 @contextmanager
 def bind_run(trace_id: str, run_id: str) -> Iterator[None]:
     _trace_id.set(trace_id)
@@ -104,13 +153,14 @@ def current_run_context() -> tuple[str | None, str | None]:
     return _trace_id.get(), _run_id.get()
 
 
-def add_model_usage(*, model: str, input_tokens: int, output_tokens: int) -> None:
+def add_model_usage(*, model: str, input_tokens: int, output_tokens: int, usage_uncertain: bool = False) -> None:
     collector = _model_usage.get()
     if collector is None:
         return
     collector.model = model
     collector.input_tokens += max(0, input_tokens)
     collector.output_tokens += max(0, output_tokens)
+    collector.usage_uncertain = collector.usage_uncertain or usage_uncertain
 
 
 def consume_model_usage() -> ModelUsage:
@@ -121,10 +171,12 @@ def consume_model_usage() -> ModelUsage:
         model=collector.model,
         input_tokens=collector.input_tokens,
         output_tokens=collector.output_tokens,
+        usage_uncertain=collector.usage_uncertain,
     )
     collector.model = None
     collector.input_tokens = 0
     collector.output_tokens = 0
+    collector.usage_uncertain = False
     return usage
 
 

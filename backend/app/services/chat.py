@@ -1,4 +1,5 @@
 import asyncio
+from builtins import Exception
 import time
 from collections.abc import AsyncIterator
 from dataclasses import asdict, dataclass
@@ -19,6 +20,8 @@ from app.core.telemetry import (
 from app.db.models import AgentRun, BadCase, Conversation, Message
 from app.llm.providers import ChatProvider, ChatResult
 from app.repositories.agent_runs import AgentRunRepository
+from app.repositories.ticket_context import load_ticket_context
+from app.repositories.ticket_intake_context import load_ticket_intake_context
 from app.schemas import TicketDraft
 from app.tickets.service import TicketService
 
@@ -47,6 +50,7 @@ class ObservableChatProvider:
             model=result.model,
             input_tokens=result.input_tokens,
             output_tokens=result.output_tokens,
+            usage_uncertain=result.usage_uncertain,
         )
         return result
 
@@ -65,9 +69,66 @@ class ChatService:
             ticket_service=graph_dependencies.ticket_service,
             user_access_level=graph_dependencies.user_access_level,
             minimum_evidence_score=graph_dependencies.minimum_evidence_score,
+            require_structured_citations=graph_dependencies.require_structured_citations,
         )
         self._ticket_service = ticket_service
         self._runs = AgentRunRepository(session_factory)
+
+    async def stream_run(self, *, user_id: str, conversation_id: str, content: str,
+                         trace_id: str, run_id: str, history: list[dict[str, str]], lease_token: str | None = None,
+                         ticket_context: dict[str, Any] | None = None,
+                         ticket_intake_context: dict[str, Any] | None = None) -> AsyncIterator[ChatEvent]:
+        """Execute a durable job; the caller owns all business persistence and leases."""
+        state: dict[str, Any] = {"user_id":user_id, "conversation_id":conversation_id,
+                                 "message":content, "step_count":0, "trace_id":trace_id,
+                                 "history":history,"run_id":run_id,"lease_token":lease_token}
+        if ticket_context is not None:
+            state["ticket_context"] = ticket_context
+        if ticket_intake_context is not None:
+            state["ticket_intake_context"] = ticket_intake_context
+        total_input = total_output = 0
+        uncertain = False
+        model: str | None = None
+        with bind_run(trace_id, run_id):
+            yield ChatEvent("run_started", {"run_id":run_id})
+            graph = build_graph(self._graph_dependencies)
+            node_started_ns = time.time_ns()
+            node_started = time.perf_counter()
+            async for updates in graph.astream(state, stream_mode="updates"):
+                for node, update in updates.items():
+                    state.update(update)
+                    usage = consume_model_usage()
+                    total_input += usage.input_tokens
+                    total_output += usage.output_tokens
+                    uncertain = uncertain or usage.usage_uncertain
+                    model = usage.model or model
+                    latency_ms=int((time.perf_counter()-node_started)*1000)
+                    record_node_span(node=node, started_ns=node_started_ns,
+                        latency_ms=latency_ms,
+                        result_category="error" if update.get("error") else str(update.get("final_state") or "completed"),
+                        usage=usage)
+                    node_started_ns, node_started = time.time_ns(), time.perf_counter()
+                    yield ChatEvent("node_completed", {"node":node,"step_count":state.get("step_count",0),"latency_ms":latency_ms})
+            citations = [asdict(c) for c in state.get("citations", [])]
+            final_state = state.get("final_state", "handoff")
+            if final_state != "awaiting_confirmation":
+                state.pop("ticket_draft", None)
+                state.pop("confirmation_token", None)
+            knowledge_context = {"knowledge_context": state["knowledge_context"]} if "knowledge_context" in state else {}
+            yield ChatEvent("citations", {"citations":citations, **knowledge_context})
+            draft = state.get("ticket_draft")
+            if isinstance(draft, TicketDraft) and state.get("confirmation_token"):
+                yield ChatEvent("ticket_draft", {"draft":draft.model_dump(mode="json"),"confirmation_token":state["confirmation_token"]})
+            if state.get("handoff_reason"):
+                yield ChatEvent("handoff", {"reason":state["handoff_reason"]})
+            yield ChatEvent("final", {"run_id":run_id,"answer":state.get("answer","处理失败，请联系IT支持。"),
+                                       "final_state":final_state,"citations":citations,
+                                       **knowledge_context,
+                                       "handoff_reason":state.get("handoff_reason"),
+                                       "error":state.get("error"),
+                                       **({"ticket_lookup": state["ticket_lookup"]} if "ticket_lookup" in state else {}),
+                                       **({"ticket_intake": state["ticket_intake"]} if "ticket_intake" in state else {}),
+                                       "usage":{"input_tokens":total_input,"output_tokens":total_output,"model":model,"usage_uncertain":uncertain}})
 
     async def stream_message(
         self,
@@ -129,6 +190,11 @@ class ChatService:
     ) -> AsyncIterator[ChatEvent]:
         try:
             try:
+                async with self._session_factory() as session:
+                    state["ticket_context"] = await load_ticket_context(session, state["user_id"], conversation_id,
+                                                                        run_id, production=False)
+                    state["ticket_intake_context"] = await load_ticket_intake_context(session, state["user_id"], conversation_id,
+                                                                                      run_id, production=False)
                 graph = build_graph(self._graph_dependencies)
                 async for updates in graph.astream(state, stream_mode="updates"):
                     for node_name, update in updates.items():
@@ -149,6 +215,8 @@ class ChatService:
                                 "model": usage.model,
                                 "input_tokens": usage.input_tokens,
                                 "output_tokens": usage.output_tokens,
+                                **({"ticket_lookup": update["ticket_lookup"]} if "ticket_lookup" in update else {}),
+                                **({"ticket_intake": update["ticket_intake"]} if "ticket_intake" in update else {}),
                             }
                         )
                         record_node_span(
@@ -203,6 +271,8 @@ class ChatService:
                 finalized = True
             except Exception:
                 self._set_handoff(state, "persistence_failed")
+                draft = None
+                confirmation_token = None
                 final_state = "handoff"
                 handoff_reason = "persistence_failed"
                 answer = str(state["answer"])
@@ -248,6 +318,8 @@ class ChatService:
                 "message_id": state.get("_assistant_message_id"),
                 "answer": state["answer"],
                 "final_state": state["final_state"],
+                **({"ticket_lookup": state["ticket_lookup"]} if "ticket_lookup" in state else {}),
+                **({"ticket_intake": state["ticket_intake"]} if "ticket_intake" in state else {}),
             },
         )
 

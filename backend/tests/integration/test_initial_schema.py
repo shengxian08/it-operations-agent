@@ -36,7 +36,7 @@ async def async_engine() -> AsyncIterator[AsyncEngine]:
 
 
 def test_model_metadata_declares_required_tables_and_fields() -> None:
-    assert REQUIRED_TABLES == set(Base.metadata.tables)
+    assert REQUIRED_TABLES <= set(Base.metadata.tables)
 
     message_columns = set(Base.metadata.tables["messages"].columns.keys())
     assert {"citations", "user_feedback"} <= message_columns

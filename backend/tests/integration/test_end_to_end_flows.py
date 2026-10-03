@@ -203,7 +203,7 @@ def test_vpn_answer_has_citation_and_ticket_lookup_has_distinct_state(api_client
 
 def test_ticket_draft_requires_confirmation_before_creation(api_client) -> None:
     client, service = api_client
-    events = _events(_ask(client, "VPN 一直连接失败，请创建工单"))
+    events = _events(_ask(client, "请创建工单\n问题：VPN 一直连接失败\n影响范围：仅本人\n已尝试：尚未尝试"))
     ticket_draft = events["ticket_draft"]
 
     assert events["final"]["final_state"] == "awaiting_confirmation"

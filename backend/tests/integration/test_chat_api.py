@@ -233,7 +233,7 @@ def test_confirmed_draft_creates_ticket_and_feedback_persists(client) -> None:
     stream = test_client.post(
         "/api/conversations/c-001/messages:stream",
         headers={"X-Trace-Id": "trace-confirmed-ticket"},
-        json={"user_id": "u-001", "content": "Please create ticket for VPN outage"},
+        json={"user_id": "u-001", "content": "Please create ticket\n问题：VPN outage\n影响范围：仅本人\n已尝试：尚未尝试"},
     )
     payloads = dict(_sse_payloads(stream))
     draft = payloads["ticket_draft"]
@@ -249,6 +249,14 @@ def test_confirmed_draft_creates_ticket_and_feedback_persists(client) -> None:
         },
     )
     ticket = confirmed.json()
+    long_ticket_first_number = "A" * 64
+    long_ticket_number = "A" * 65
+    fourth_status = test_client.get(f"/api/tickets/{long_ticket_first_number}?user_id=u-001")
+    third_status = test_client.get(f"/api/tickets/{long_ticket_number}?user_id=u-001")
+    second_status = test_client.get(f"/api/tickets/{ticket['ticket_number']}?user_id=u-002")
+    none_status = test_client.get(f"/api/tickets/{ticket['ticket_number']}?")
+    over_status = test_client.get(f"/api/tickets/{ticket['ticket_number']}?user_id=aB3kP9mX2vL8nR4tYcW6hJ7sF1dQ5gU0eI9oZxC2pV7bN4mK8qW3yH6jL1tR5sFxy")
+    invalid_status = test_client.get(f"/api/tickets/{ticket['ticket_number']}?user_id=")
     status = test_client.get(f"/api/tickets/{ticket['ticket_number']}?user_id=u-001")
     assistant_message_id = payloads["final"]["message_id"]
     feedback = test_client.post(
@@ -261,6 +269,18 @@ def test_confirmed_draft_creates_ticket_and_feedback_persists(client) -> None:
     assert status.status_code == 200
     assert status.json()["ticket_number"] == ticket["ticket_number"]
     assert feedback.status_code == 200
+    assert invalid_status.status_code == 422
+    assert invalid_status.json()["code"] == "validation_error"
+    assert over_status.status_code == 422
+    assert over_status.json()["code"] == "validation_error"
+    assert none_status.status_code == 422
+    assert none_status.json()["code"] == "validation_error"
+    assert second_status.status_code == 404
+    assert second_status.json()["code"] == "ticket_not_found"
+    assert third_status.status_code == 422
+    assert third_status.json()["code"] == "validation_error"
+    assert fourth_status.status_code == 404
+    assert fourth_status.json()["code"] == "ticket_not_found"
 
     async def feedback_value() -> dict[str, str] | None:
         async with context.session_factory() as session:
@@ -330,7 +350,7 @@ def test_confirmation_token_cannot_be_reused_for_another_owned_conversation(
     stream = test_client.post(
         "/api/conversations/c-001/messages:stream",
         headers={"X-Trace-Id": "trace-conversation-swap"},
-        json={"user_id": "u-001", "content": "Please create ticket for VPN outage"},
+        json={"user_id": "u-001", "content": "Please create ticket\n问题：VPN outage\n影响范围：仅本人\n已尝试：尚未尝试"},
     )
     draft_event = dict(_sse_payloads(stream))["ticket_draft"]
 

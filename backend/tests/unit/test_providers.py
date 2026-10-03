@@ -50,6 +50,58 @@ async def test_mock_provider_uses_stable_token_estimate() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mock_provider_shows_retrieved_content_with_its_source() -> None:
+    prompt = (
+        '<user_question>\n{"question":"VPN 连不上时先检查什么？"}\n</user_question>\n\n'
+        '<knowledge_evidence>\n'
+        '[{"citation":1,"source_title":"VPN 连接故障处理",'
+        '"excerpt":"确认设备能正常访问互联网，记录完整错误代码。"}]'
+        '\n</knowledge_evidence>'
+    )
+
+    result = await MockChatProvider().complete(prompt)
+
+    assert "VPN 连接故障处理" in result.text
+    assert "确认设备能正常访问互联网，记录完整错误代码。" in result.text
+    assert "[1]" in result.text
+    assert "请先确认网络连接，然后重新连接 VPN。" not in result.text
+
+
+@pytest.mark.asyncio
+async def test_mock_provider_formats_pdf_section_as_a_focused_list() -> None:
+    excerpt = (
+        "…人工复核环节，而非强制全自动闭环 "
+        "3.2 试点岗位选择标准 "
+        "• 岗位量大、简历流量高，便于短期内积累有效验证数据； "
+        "• 任职要求相对标准化（如客服、销售、初级技术岗），减少主观判断干扰； "
+        "• 非高敏感岗位（如涉密岗、高管岗），试点阶段风险可控。 "
+        "3.3 部署与分层培训计划 培训对象…"
+    )
+    prompt = (
+        '<user_question>\n{"question":"岗位选择标准是什么？"}\n</user_question>\n\n'
+        '<knowledge_evidence>\n'
+        + json.dumps(
+            [{"citation": 1, "source_title": "AI 招聘工具落地实施方案", "excerpt": excerpt}],
+            ensure_ascii=False,
+        )
+        + '\n</knowledge_evidence>'
+    )
+
+    result = await MockChatProvider().complete(prompt)
+
+    assert "试点岗位选择标准" in result.text
+    assert "1. 岗位量大、简历流量高" in result.text
+    assert "2. 任职要求相对标准化" in result.text
+    assert "3. 非高敏感岗位" in result.text
+    assert "[1]" in result.text
+    assert "人工复核环节" not in result.text
+    assert "3.3" not in result.text
+    assert "培训对象" not in result.text
+    assert "请打开对应原文" not in result.text
+    assert "…" not in result.text
+
+
+@pytest.mark.asyncio
 async def test_openai_provider_maps_chat_completion_without_logging_secrets(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -115,6 +167,7 @@ async def test_openai_provider_maps_chat_completion_without_logging_secrets(
             }
         ],
         "model": "test-model",
+        "max_tokens": 1500,
     }
 
     assert len(caplog.records) == 1

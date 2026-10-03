@@ -4,7 +4,7 @@ import json
 import math
 import re
 from collections.abc import Awaitable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
@@ -33,6 +33,7 @@ class EvaluationCase:
     expected_citations: tuple[str, ...]
     expected_tools: tuple[str, ...]
     expected_handoff_reason: str | None
+    relevant_sources: tuple[str, ...] | None = None
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "EvaluationCase":
@@ -43,7 +44,7 @@ class EvaluationCase:
             "expected_citations",
             "expected_tools",
         }
-        allowed = required | {"expected_handoff_reason"}
+        allowed = required | {"expected_handoff_reason", "relevant_sources"}
         missing = required - value.keys()
         extra = value.keys() - allowed
         if missing:
@@ -73,6 +74,14 @@ class EvaluationCase:
                     "expected_citations must contain knowledge file names only"
                 )
         tools = _string_tuple(value["expected_tools"], "expected_tools")
+        relevant_sources = None
+        if value.get("relevant_sources") is not None:
+            relevant_sources = _string_tuple(value["relevant_sources"], "relevant_sources")
+            for source in relevant_sources:
+                if "/" in source or "\\" in source or Path(source).suffix.lower() not in {".md", ".pdf"}:
+                    raise ValueError("relevant_sources must contain knowledge file names only")
+            if not set(citations).issubset(relevant_sources):
+                raise ValueError("relevance labels must include every required source")
         reason_value = value.get("expected_handoff_reason")
         reason = (
             None
@@ -91,6 +100,7 @@ class EvaluationCase:
             expected_citations=citations,
             expected_tools=tools,
             expected_handoff_reason=reason,
+            relevant_sources=relevant_sources,
         )
 
 
@@ -101,6 +111,9 @@ class EvaluationResult:
     latency_ms: float
     recall_at_5: float | None
     citation_precision: float | None
+    required_source_coverage: float | None
+    has_relevance_labels: bool
+    relevant_citation_count: int
     expected_citation_count: int
     retrieved_match_count: int
     actual_citation_count: int
@@ -133,7 +146,13 @@ class EvaluationSummary:
     passed_cases: int
     failed_cases: int
     recall_at_5: float
-    citation_precision: float
+    citation_precision: float | None
+    required_source_coverage: float
+    precision_labeled_citation_count: int
+    relevant_citation_count: int
+    knowledge_case_count: int
+    relevance_labeled_case_count: int
+    critical_behavior_pass_rate: float
     final_state_pass_rate: float
     tool_behavior_pass_rate: float
     handoff_reason_pass_rate: float
@@ -145,6 +164,43 @@ class EvaluationSummary:
     @property
     def pass_rate(self) -> float:
         return self.passed_cases / self.total_cases if self.total_cases else 0.0
+
+    @property
+    def relevance_label_coverage(self) -> float:
+        return self.relevance_labeled_case_count / self.knowledge_case_count if self.knowledge_case_count else 0.0
+
+
+@dataclass(frozen=True, slots=True)
+class ReleaseGate:
+    passed: bool
+    reasons: tuple[str, ...]
+    minimum_recall: float = 0.8
+    minimum_citation_precision: float = 0.85
+
+
+def release_gate(summary: EvaluationSummary, *, minimum_recall=0.8, minimum_citation_precision=0.85) -> ReleaseGate:
+    if not all(math.isfinite(value) and 0 <= value <= 1 for value in (minimum_recall, minimum_citation_precision)):
+        raise ValueError("release thresholds must be finite fractions between zero and one")
+    minimum_recall = max(0.8, minimum_recall)
+    minimum_citation_precision = max(0.85, minimum_citation_precision)
+    failures = []
+    if summary.recall_at_5 < minimum_recall:
+        failures.append("recall_below_threshold")
+    if summary.citation_precision is None:
+        failures.append("unmeasured_citation_precision")
+    elif summary.citation_precision < minimum_citation_precision:
+        failures.append("citation_precision_below_threshold")
+    if summary.relevance_label_coverage < 1.0:
+        failures.append("incomplete_relevance_labels")
+    for rate, code in ((summary.final_state_pass_rate, "final_state_failure"),
+                       (summary.tool_behavior_pass_rate, "tool_behavior_failure"),
+                       (summary.handoff_reason_pass_rate, "handoff_reason_failure"),
+                       (summary.critical_behavior_pass_rate, "critical_behavior_failure")):
+        if rate != 1.0:
+            failures.append(code)
+    if summary.unconfirmed_ticket_writes:
+        failures.append("unconfirmed_ticket_write")
+    return ReleaseGate(not failures, tuple(failures), minimum_recall, minimum_citation_precision)
 
 
 Case = EvaluationCase
@@ -219,7 +275,7 @@ def load_cases(
             {
                 citation
                 for case in cases
-                for citation in case.expected_citations
+                for citation in (*case.expected_citations, *(case.relevant_sources or ()))
                 if citation not in available_sources
             }
         )
@@ -242,8 +298,8 @@ async def evaluate_case(
     started_at = perf_counter()
     state = await runtime.ainvoke(
         {
-            "user_id": "u-001",
-            "conversation_id": "c-001",
+            "user_id": getattr(runtime, "user_id", "u-001"),
+            "conversation_id": getattr(runtime, "conversation_id", "c-001"),
             "message": resolved_case.query,
             "step_count": 0,
             "trace_id": f"evaluation-{resolved_case.id}",
@@ -266,18 +322,21 @@ async def evaluate_case(
     citation_matches = len(expected_sources & set(actual_citations))
     expected_count = len(expected_sources)
     recall = retrieved_matches / expected_count if expected_count else None
-    # The fixed set labels required supporting sources, not an exhaustive list of
-    # every relevant source. Score whether the answer cited those required sources.
-    precision = citation_matches / expected_count if expected_count else None
+    coverage = citation_matches / expected_count if expected_count else None
+    relevance_labels = resolved_case.relevant_sources
+    relevant_count = len(set(actual_citations) & set(relevance_labels or ()))
+    precision = (relevant_count / len(actual_citations)
+                 if relevance_labels is not None and actual_citations else None)
 
     actual_final_state = _optional_string(state.get("final_state"))
     actual_handoff_reason = _optional_string(state.get("handoff_reason"))
     final_state_passed = actual_final_state == resolved_case.expected_final_state
     # Empty citation expectations are neutral. Ticket and handoff paths do not retrieve,
     # so treating their intentional empty list as a retrieval failure is misleading.
-    citations_passed = not expected_count or (
-        recall == 1.0 and expected_sources.issubset(actual_citations)
-    )
+    citations_passed = (not actual_citations if not expected_count and resolved_case.expected_final_state != "answered"
+        else not expected_count or (recall == 1.0 and expected_sources.issubset(actual_citations)))
+    if precision is not None and precision < 0.85:
+        citations_passed = False
     tools_passed = actual_tools == resolved_case.expected_tools
     handoff_reason_passed = (
         actual_handoff_reason == resolved_case.expected_handoff_reason
@@ -302,6 +361,9 @@ async def evaluate_case(
         latency_ms=latency_ms,
         recall_at_5=recall,
         citation_precision=precision,
+        required_source_coverage=coverage,
+        has_relevance_labels=relevance_labels is not None,
+        relevant_citation_count=relevant_count,
         expected_citation_count=expected_count,
         retrieved_match_count=retrieved_matches,
         actual_citation_count=len(actual_citations),
@@ -337,11 +399,10 @@ def summarize_results(results: Sequence[EvaluationResult]) -> EvaluationSummary:
         raise ValueError("at least one evaluation result is required")
     total = len(results)
     expected_citations = sum(item.expected_citation_count for item in results)
-    emitted_expected_citations = sum(
-        item.expected_citation_count
-        for item in results
-        if item.actual_citation_count > 0
-    )
+    labelled = [item for item in results if item.has_relevance_labels]
+    emitted_labelled_citations = sum(item.actual_citation_count for item in labelled)
+    knowledge_cases = [item for item in results if item.expected_final_state == "answered"]
+    critical_cases = [item for item in results if item.expected_final_state != "answered"]
     return EvaluationSummary(
         total_cases=total,
         passed_cases=sum(item.passed for item in results),
@@ -352,11 +413,15 @@ def summarize_results(results: Sequence[EvaluationResult]) -> EvaluationSummary:
             else 0.0
         ),
         citation_precision=(
-            sum(item.citation_match_count for item in results)
-            / emitted_expected_citations
-            if emitted_expected_citations
-            else 0.0
+            sum(item.relevant_citation_count for item in labelled) / emitted_labelled_citations
+            if emitted_labelled_citations else None
         ),
+        required_source_coverage=sum(item.citation_match_count for item in results) / expected_citations if expected_citations else 0.0,
+        precision_labeled_citation_count=emitted_labelled_citations,
+        relevant_citation_count=sum(item.relevant_citation_count for item in labelled),
+        knowledge_case_count=len(knowledge_cases),
+        relevance_labeled_case_count=sum(item.has_relevance_labels for item in knowledge_cases),
+        critical_behavior_pass_rate=sum(item.passed for item in critical_cases) / len(critical_cases) if critical_cases else 1.0,
         final_state_pass_rate=sum(item.final_state_passed for item in results) / total,
         tool_behavior_pass_rate=sum(item.tools_passed for item in results) / total,
         handoff_reason_pass_rate=(
@@ -378,6 +443,7 @@ def render_markdown_report(
     dataset_path: str | Path,
     command: str,
     generated_at: datetime | None = None,
+    gate: ReleaseGate | None = None,
 ) -> str:
     source = Path(dataset_path)
     generated = generated_at or datetime.now(UTC)
@@ -400,12 +466,14 @@ def render_markdown_report(
             failures.append("unconfirmed_write")
         details.append(f"| `{result.case_id}` | {', '.join(failures)} |")
     detail_rows = "\n".join(details) or "| None | None |"
+    precision_text = f"{summary.citation_precision:.3f}" if summary.citation_precision is not None else "Not measured (no exhaustive relevance labels)"
+    gate = gate or release_gate(summary)
     return f"""# Offline Evaluation Report
 
-Generated from the fixed local evaluation set. Expected citations are required
-supporting sources rather than an exhaustive relevance list. Citation correctness
-measures whether answers that emit citations include those sources; retrieval recall
-captures missing evidence. Non-knowledge paths are excluded.
+Expected citations measure required-source coverage. True citation precision counts
+emitted sources against explicit exhaustive `relevant_sources` labels; unlabelled
+cases do not produce a precision measurement. Non-knowledge paths do not contribute
+to retrieval metrics. Every critical state/tool/safety assertion must pass release.
 
 ## Baseline
 
@@ -421,15 +489,20 @@ captures missing evidence. Non-knowledge paths are excluded.
 | Cases | {summary.total_cases} |
 | Overall pass rate | {summary.pass_rate:.3f} |
 | Recall@5 | {summary.recall_at_5:.3f} |
-| Citation precision | {summary.citation_precision:.3f} |
+| Required source coverage | {summary.required_source_coverage:.3f} |
+| Citation precision | {precision_text} |
+| Relevance label coverage | {summary.relevance_label_coverage:.3f} |
 | Final state pass rate | {summary.final_state_pass_rate:.3f} |
 | Tool behavior pass rate | {summary.tool_behavior_pass_rate:.3f} |
 | Handoff reason pass rate | {summary.handoff_reason_pass_rate:.3f} |
 | Unconfirmed ticket writes | {summary.unconfirmed_ticket_writes} |
+| Critical behavior pass rate | {summary.critical_behavior_pass_rate:.3f} |
 | P50 latency | {summary.p50_latency_ms:.2f} ms |
 | P95 latency | {summary.p95_latency_ms:.2f} ms |
 
 ## Failures
+
+Release gate: **{'PASS' if gate.passed else 'FAIL'}**. Reasons: {', '.join(gate.reasons) or 'None'}.
 
 Failed case IDs: {failed_ids}
 
@@ -437,6 +510,23 @@ Failed case IDs: {failed_ids}
 | --- | --- |
 {detail_rows}
 """
+
+
+def render_json_report(summary, results, *, dataset_path, command, generated_at=None, metadata=None, gate=None):
+    source = Path(dataset_path)
+    generated = generated_at or datetime.now(UTC)
+    return {"schema_version": 2, "generated_at": generated.astimezone(UTC).isoformat(), "command": command,
+            "dataset": {"path": str(source), "sha256": hashlib.sha256(source.read_bytes()).hexdigest()},
+            "runtime": metadata or {}, "summary": {**asdict(summary), "pass_rate": summary.pass_rate,
+                "relevance_label_coverage": summary.relevance_label_coverage},
+            "release_gate": asdict(gate or release_gate(summary)), "results": [asdict(item) for item in results]}
+
+
+def write_json_report(path, summary, results, **kwargs):
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(render_json_report(summary, results, **kwargs), ensure_ascii=False,
+        indent=2, allow_nan=False) + "\n", encoding="utf-8")
 
 
 def write_markdown_report(
@@ -447,6 +537,7 @@ def write_markdown_report(
     dataset_path: str | Path,
     command: str,
     generated_at: datetime | None = None,
+    gate: ReleaseGate | None = None,
 ) -> None:
     Path(path).write_text(
         render_markdown_report(
@@ -455,6 +546,7 @@ def write_markdown_report(
             dataset_path=dataset_path,
             command=command,
             generated_at=generated_at,
+            gate=gate,
         ),
         encoding="utf-8",
     )

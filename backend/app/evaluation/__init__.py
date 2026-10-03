@@ -11,6 +11,9 @@ from app.evaluation.runner import (
     render_markdown_report,
     summarize_results,
     write_markdown_report,
+    release_gate,
+    render_json_report,
+    write_json_report,
 )
 
 __all__ = [
@@ -26,4 +29,7 @@ __all__ = [
     "render_markdown_report",
     "summarize_results",
     "write_markdown_report",
+    "release_gate",
+    "render_json_report",
+    "write_json_report",
 ]

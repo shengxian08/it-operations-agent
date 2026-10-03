@@ -84,7 +84,7 @@ class Message(Base):
 
 class AgentRun(Base):
     __tablename__ = "agent_runs"
-    __table_args__ = (Index("ix_agent_runs_trace_id", "trace_id"),)
+    __table_args__ = (Index("ix_agent_runs_trace_id", "trace_id"), Index("uq_agent_runs_result_message_id", "result_message_id",unique=True))
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
     conversation_id: Mapped[str] = mapped_column(
@@ -94,7 +94,7 @@ class AgentRun(Base):
         ForeignKey("messages.id", ondelete="SET NULL"), nullable=True
     )
     result_message_id: Mapped[str | None] = mapped_column(
-        ForeignKey("messages.id", ondelete="SET NULL"), nullable=True, unique=True
+        ForeignKey("messages.id", ondelete="SET NULL"), nullable=True
     )
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, server_default="running"

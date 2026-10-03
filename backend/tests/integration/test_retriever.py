@@ -116,7 +116,7 @@ async def retrieval_context(tmp_path: Path) -> AsyncIterator[RetrievalContext]:
             [vpn_path, printer_path, support_path, pdf_path]
         )
         assert summary.document_count == 4
-        assert summary.chunk_count >= 16
+        assert 12 <= summary.chunk_count <= 20
         yield RetrievalContext(
             retriever=retriever,
             ingestor=ingestor,
@@ -268,6 +268,104 @@ async def test_reingest_replaces_chunks_and_qdrant_points_without_duplicates(
 
 
 @pytest.mark.asyncio
+async def test_directory_sync_removes_deleted_pdf_and_restores_it_on_reimport(
+    retrieval_context: RetrievalContext,
+) -> None:
+    pdf_path = retrieval_context.pdf_path
+    original_pdf = pdf_path.read_bytes()
+    pdf_path.unlink()
+
+    removed = await retrieval_context.ingestor.ingest_directory(pdf_path.parent)
+
+    async with retrieval_context.session_factory() as session:
+        active_pdf_count = await session.scalar(
+            select(func.count()).select_from(KnowledgeDocument).where(
+                KnowledgeDocument.source_path == pdf_path.name,
+                KnowledgeDocument.status == "active",
+            )
+        )
+    points_after_removal = await retrieval_context.qdrant.count(
+        retrieval_context.collection_name,
+        count_filter=models.Filter(
+            must=[models.FieldCondition(
+                key="source_path",
+                match=models.MatchValue(value=pdf_path.name),
+            )]
+        ),
+        exact=True,
+    )
+
+    assert removed.document_count == 3
+    assert removed.removed_document_count == 1
+    assert active_pdf_count == 0
+    assert points_after_removal.count == 0
+    assert all(
+        hit.citation.source_path != pdf_path.name
+        for hit in await retrieval_context.retriever.retrieve(
+            "VPN-720 证书错误", user_access_level="employee"
+        )
+    )
+
+    pdf_path.write_bytes(original_pdf)
+    restored = await retrieval_context.ingestor.ingest_directory(pdf_path.parent)
+    points_after_restore = await retrieval_context.qdrant.count(
+        retrieval_context.collection_name,
+        count_filter=models.Filter(
+            must=[models.FieldCondition(
+                key="source_path",
+                match=models.MatchValue(value=pdf_path.name),
+            )]
+        ),
+        exact=True,
+    )
+
+    assert restored.document_count == 4
+    assert restored.removed_document_count == 0
+    assert points_after_restore.count > 0
+
+
+@pytest.mark.asyncio
+async def test_directory_sync_accepts_an_empty_directory(
+    retrieval_context: RetrievalContext,
+) -> None:
+    for path in (
+        retrieval_context.vpn_path,
+        retrieval_context.printer_path,
+        retrieval_context.support_path,
+        retrieval_context.pdf_path,
+    ):
+        path.unlink()
+
+    summary = await retrieval_context.ingestor.ingest_directory(
+        retrieval_context.vpn_path.parent
+    )
+
+    async with retrieval_context.session_factory() as session:
+        active_count = await session.scalar(
+            select(func.count()).select_from(KnowledgeDocument).where(
+                KnowledgeDocument.source_path.in_(
+                    [
+                        retrieval_context.vpn_path.name,
+                        retrieval_context.printer_path.name,
+                        retrieval_context.support_path.name,
+                        retrieval_context.pdf_path.name,
+                    ]
+                ),
+                KnowledgeDocument.status == "active",
+            )
+        )
+    point_count = await retrieval_context.qdrant.count(
+        retrieval_context.collection_name, exact=True
+    )
+
+    assert summary.document_count == 0
+    assert summary.chunk_count == 0
+    assert summary.removed_document_count == 4
+    assert active_count == 0
+    assert point_count.count == 0
+
+
+@pytest.mark.asyncio
 async def test_vector_write_failure_keeps_previous_document_active(
     retrieval_context: RetrievalContext,
     monkeypatch: pytest.MonkeyPatch,
@@ -392,11 +490,26 @@ async def test_all_seed_articles_ingest_idempotently(
                 .where(KnowledgeDocument.source_path.in_(source_paths))
             )
         point_count = await qdrant.count(collection_name, exact=True)
+        retriever = HybridRetriever(
+            session_factory,
+            qdrant,
+            DeterministicEmbedder(dimensions=96),
+            LexicalReranker(),
+            collection_name=collection_name,
+        )
+        vpn_hits = await retriever.retrieve(
+            "公司 VPN 连不上时应该先检查什么？",
+            user_access_level="employee",
+        )
 
         assert first == second
         assert 30 <= first.document_count <= 50
         assert first.document_count == document_count == len(source_paths)
         assert first.chunk_count == chunk_count == point_count.count
+        assert any(
+            hit.citation.source_path.endswith("vpn-connection.md")
+            for hit in vpn_hits
+        )
     finally:
         async with session_factory.begin() as session:
             await session.execute(

@@ -14,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db.models import KnowledgeChunk as StoredKnowledgeChunk
 from app.db.models import KnowledgeDocument
+from app.rag.pdf import PDF_MARKER, extract_pdf
+from app.rag.markdown import parse_markdown
 
 
 SUPPORTED_EXTENSIONS = {".md", ".pdf"}
@@ -32,18 +34,24 @@ class KnowledgeChunk:
     char_start: int
     char_end: int
     access_level: str = "employee"
+    structure: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class IngestionSummary:
     document_count: int
     chunk_count: int
+    removed_document_count: int = 0
 
 
 class Embedder(Protocol):
     dimensions: int
 
     async def encode(self, texts: Sequence[str]) -> list[list[float]]: ...
+
+
+class EmbeddingInputTooLong(ValueError):
+    """The complete source/search context exceeds the verified model budget."""
 
 
 class DeterministicEmbedder:
@@ -73,7 +81,7 @@ class DeterministicEmbedder:
 class SentenceTransformerEmbedder:
     """Optional production adapter; the model is loaded only when selected."""
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, *, revision: str | None = None) -> None:
         try:
             from sentence_transformers import SentenceTransformer
         except ImportError as error:
@@ -81,19 +89,41 @@ class SentenceTransformerEmbedder:
                 "install the 'rag' optional dependencies for semantic embeddings"
             ) from error
 
-        self._model = SentenceTransformer(model_name)
+        self._model = SentenceTransformer(model_name, revision=revision)
+        self.query_instruction = (
+            "为这个句子生成表示以用于检索相关文章："
+            if model_name == "BAAI/bge-small-zh-v1.5" else ""
+        )
         dimensions = self._model.get_sentence_embedding_dimension()
         if dimensions is None:
             raise ValueError("embedding model did not report its dimensions")
         self.dimensions = dimensions
 
+    async def token_counts(self, texts: Sequence[str]) -> list[int]:
+        limit = self._model.max_seq_length
+        if not isinstance(limit, int) or limit <= 0:
+            raise ValueError("embedding model did not report a valid input token limit")
+        limit = min(limit, 512)
+        encoded = await asyncio.to_thread(self._model.tokenizer, list(texts),
+            truncation=False, add_special_tokens=True, verbose=False)
+        counts = [len(ids) for ids in encoded["input_ids"]]
+        if len(counts) != len(texts):
+            raise ValueError("embedding tokenizer returned an unexpected input count")
+        if any(count > limit for count in counts):
+            raise EmbeddingInputTooLong(f"完整检索输入超过{limit} token上限，请人工整理正文与章节后重新准备。")
+        return counts
+
     async def encode(self, texts: Sequence[str]) -> list[list[float]]:
+        await self.token_counts(texts)
         vectors = await asyncio.to_thread(
             self._model.encode,
             list(texts),
             normalize_embeddings=True,
         )
         return [vector.tolist() for vector in vectors]
+
+    async def encode_query(self, query: str) -> list[float]:
+        return (await self.encode([self.query_instruction + query]))[0]
 
 
 def extract_text(path: str | Path) -> str:
@@ -116,16 +146,7 @@ def extract_text(path: str | Path) -> str:
             raise RuntimeError("PyMuPDF is required to read PDF knowledge") from error
 
         try:
-            with pymupdf.open(source_path) as document:
-                page_texts = []
-                for page in document:
-                    blocks = [
-                        block[4].strip()
-                        for block in page.get_text("blocks")
-                        if block[4].strip()
-                    ]
-                    page_texts.append("\n\n".join(blocks))
-                text = "\n\n".join(page_texts)
+            text = extract_pdf(source_path)["content"]
         except (FileNotFoundError, RuntimeError, ValueError) as error:
             raise ValueError(f"unable to decode PDF: {source_path.name}") from error
 
@@ -140,16 +161,24 @@ def chunk_markdown(
     source_path: str,
     max_chars: int = 800,
     overlap_chars: int = 120,
+    max_table_chars: int = 800,
     version: str | None = None,
     access_level: str = "employee",
     source_title: str | None = None,
 ) -> list[KnowledgeChunk]:
     if max_chars <= 0:
         raise ValueError("max_chars must be positive")
+    if max_table_chars <= 0:
+        raise ValueError("max_table_chars must be positive")
     if overlap_chars < 0 or overlap_chars >= max_chars:
         raise ValueError("overlap_chars must be between zero and max_chars")
     if not markdown.strip():
         raise ValueError("knowledge text is empty")
+
+    if Path(source_path).suffix.lower() != ".pdf":
+        return _chunk_structured_markdown(markdown, source_path=source_path,
+            max_chars=max_chars, overlap_chars=overlap_chars, version=version,
+            access_level=access_level, source_title=source_title)
 
     title_match = re.search(r"(?m)^#\s+(.+?)\s*$", markdown)
     resolved_title = source_title or (
@@ -174,19 +203,29 @@ def chunk_markdown(
             continue
 
         paragraph_start = match.start()
+        pdf_marker = PDF_MARKER.match(paragraph) if Path(source_path).suffix.lower() == ".pdf" else None
+        if pdf_marker and pdf_marker.group("table"):
+            if len(paragraph) > max_table_chars:
+                raise ValueError("PDF 表格数据行与完整上下文超过分块上限，请人工整理后重新上传。")
+            windows.append((paragraph_start, match.end(), paragraph))
+            continue
         if len(paragraph) <= max_chars:
             windows.append((paragraph_start, match.end(), paragraph))
             continue
 
-        step = max_chars - overlap_chars
-        local_start = 0
+        prefix = pdf_marker.group(0) + "\n" if pdf_marker else ""
+        payload_size = max_chars - len(prefix)
+        if payload_size <= overlap_chars:
+            raise ValueError("max_chars must accommodate PDF page marker and overlap_chars")
+        step = payload_size - overlap_chars
+        local_start = len(prefix)
         while local_start < len(paragraph):
-            local_end = min(local_start + max_chars, len(paragraph))
+            local_end = min(local_start + payload_size, len(paragraph))
             windows.append(
                 (
                     paragraph_start + local_start,
                     paragraph_start + local_end,
-                    paragraph[local_start:local_end],
+                    prefix + paragraph[local_start:local_end],
                 )
             )
             if local_end == len(paragraph):
@@ -210,6 +249,36 @@ def chunk_markdown(
         )
         for index, (char_start, char_end, content) in enumerate(windows)
     ]
+
+
+def _chunk_structured_markdown(markdown: str, *, source_path: str, max_chars: int,
+        overlap_chars: int, version: str | None, access_level: str, source_title: str | None) -> list[KnowledgeChunk]:
+    document = parse_markdown(markdown)
+    title = source_title or document.title or Path(source_path).stem
+    resolved_version = version or hashlib.sha256(markdown.encode("utf-8")).hexdigest()[:12]
+    document_id = str(uuid5(NAMESPACE_URL, f"knowledge:{source_path}:{resolved_version}"))
+    chunks = []
+    for block in document.blocks:
+        content = markdown[block.char_start:block.char_end]
+        atomic = block.block_type != "paragraph" or block.contains_code
+        if atomic and len(content) > max_chars:
+            raise ValueError(f"Markdown原子块超过{max_chars}字符分块上限，请人工整理后重新上传。")
+        step = max_chars - overlap_chars
+        local_start = 0
+        while local_start < len(content):
+            local_end = min(local_start + max_chars, len(content))
+            metadata = block.structure()
+            metadata["complete_block"] = local_start == 0 and local_end == len(content)
+            chunks.append(KnowledgeChunk(document_id=document_id, source_title=title, source_path=source_path,
+                version=resolved_version, chunk_index=len(chunks), content=content[local_start:local_end],
+                char_start=block.char_start + local_start, char_end=block.char_start + local_end,
+                access_level=access_level, structure=metadata))
+            if local_end == len(content):
+                break
+            local_start += step
+    if not chunks:
+        raise ValueError("knowledge text has no chunkable content")
+    return chunks
 
 
 def _is_metadata_or_heading(paragraph: str) -> bool:
@@ -263,9 +332,17 @@ class KnowledgeIngestor:
             for path in knowledge_dir.iterdir()
             if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS
         )
-        if not paths:
-            raise ValueError(f"knowledge directory is empty: {knowledge_dir}")
-        return await self.ingest_paths(paths)
+        if paths:
+            summary = await self.ingest_paths(paths)
+        else:
+            await self._ensure_collection()
+            summary = IngestionSummary(document_count=0, chunk_count=0)
+        removed = await self._remove_missing_sources({path.name for path in paths})
+        return IngestionSummary(
+            document_count=summary.document_count,
+            chunk_count=summary.chunk_count,
+            removed_document_count=removed,
+        )
 
     async def ingest_paths(self, paths: Sequence[str | Path]) -> IngestionSummary:
         if not paths:
@@ -300,7 +377,7 @@ class KnowledgeIngestor:
                 overlap_chars=self._overlap_chars,
             )
             vectors = await self._embedder.encode(
-                [search_text(chunk.source_title, chunk.content) for chunk in chunks]
+                [chunk_search_text(chunk) for chunk in chunks]
             )
             if len(vectors) != len(chunks):
                 raise ValueError("embedder returned an unexpected vector count")
@@ -314,6 +391,71 @@ class KnowledgeIngestor:
             total_chunks += len(chunks)
 
         return IngestionSummary(document_count=len(paths), chunk_count=total_chunks)
+
+    async def _remove_missing_sources(self, present_names: set[str]) -> int:
+        async with self._session_factory() as session:
+            rows = (
+                await session.execute(
+                    select(
+                        KnowledgeDocument.id,
+                        KnowledgeDocument.source_path,
+                        KnowledgeDocument.status,
+                    )
+                    .join(
+                        StoredKnowledgeChunk,
+                        StoredKnowledgeChunk.document_id == KnowledgeDocument.id,
+                    )
+                    .where(
+                        StoredKnowledgeChunk.chunk_metadata[
+                            "collection_name"
+                        ].astext
+                        == self._collection_name
+                    )
+                    .distinct()
+                )
+            ).all()
+
+        missing: dict[str, list[str]] = {}
+        removed_count = 0
+        for document_id, source_path, status in rows:
+            if source_path in present_names:
+                continue
+            missing.setdefault(source_path, []).append(document_id)
+            removed_count += status == "active"
+
+        for source_path, document_ids in missing.items():
+            # Stop retrieval before deleting vectors. If Qdrant is unavailable,
+            # the inactive chunks remain so the next sync can retry cleanup.
+            async with self._session_factory.begin() as session:
+                await session.execute(
+                    update(KnowledgeDocument)
+                    .where(KnowledgeDocument.id.in_(document_ids))
+                    .values(status="inactive")
+                )
+            await self._qdrant.delete(
+                collection_name=self._collection_name,
+                points_selector=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="source_path",
+                            match=models.MatchValue(value=source_path),
+                        )
+                    ]
+                ),
+                wait=True,
+            )
+            async with self._session_factory.begin() as session:
+                await session.execute(
+                    delete(StoredKnowledgeChunk).where(
+                        StoredKnowledgeChunk.document_id.in_(document_ids),
+                        StoredKnowledgeChunk.chunk_metadata[
+                            "collection_name"
+                        ].astext
+                        == self._collection_name,
+                    )
+                )
+
+        return removed_count
 
     async def _ensure_collection(self) -> None:
         if not await self._qdrant.collection_exists(self._collection_name):
@@ -400,6 +542,7 @@ class KnowledgeIngestor:
                         chunk_metadata={
                             "version": chunk.version,
                             "collection_name": self._collection_name,
+                            "structure": chunk.structure,
                         },
                     )
                 )
@@ -520,6 +663,8 @@ def parse_frontmatter(text: str) -> dict[str, str]:
 
 
 def _resolve_title(text: str, path: Path) -> str:
+    if path.suffix.lower() == ".md":
+        return parse_markdown(text).title or path.stem
     heading = re.search(r"(?m)^#\s+(.+?)\s*$", text)
     if heading:
         return heading.group(1).strip()
@@ -569,5 +714,19 @@ def _chunk_id(chunk: KnowledgeChunk) -> str:
     return str(uuid5(NAMESPACE_URL, name))
 
 
-def search_text(source_title: str, content: str) -> str:
-    return f"{source_title}\n{content}"
+def search_text(source_title: str, content: str, section_path: Sequence[str] = ()) -> str:
+    prefix = f"章节：{' > '.join(section_path)}\n" if section_path else ""
+    return f"{source_title}\n{prefix}{content}"
+
+
+def chunk_structure(chunk) -> dict[str, Any] | None:
+    value = getattr(chunk, "structure", None)
+    if value is None:
+        stored = getattr(chunk, "chunk_metadata", None)
+        value = stored.get("structure") if isinstance(stored, dict) else None
+    return value if isinstance(value, dict) else None
+
+
+def chunk_search_text(chunk) -> str:
+    metadata = chunk_structure(chunk)
+    return search_text(chunk.source_title, chunk.content, metadata.get("section_path", ()) if metadata else ())

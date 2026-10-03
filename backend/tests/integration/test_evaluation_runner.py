@@ -25,6 +25,7 @@ def case(**overrides: Any) -> dict[str, Any]:
         "query": "VPN 无法连接",
         "expected_final_state": "answered",
         "expected_citations": ["vpn-connection.md"],
+        "relevant_sources": ["vpn-connection.md"],
         "expected_tools": ["retrieve_evidence"],
         "expected_handoff_reason": None,
     }
@@ -102,7 +103,7 @@ async def test_additional_relevant_citations_do_not_penalize_required_source() -
                 "final_state": "answered",
             }
         ),
-        case(),
+        case(relevant_sources=["vpn-connection.md", "vpn-certificate.md"]),
     )
 
     assert result.citation_precision == 1.0
@@ -281,6 +282,7 @@ async def test_summary_has_micro_metrics_percentiles_and_report() -> None:
 
     assert summary.recall_at_5 == 0.5
     assert summary.citation_precision == 1.0
+    assert summary.required_source_coverage == 0.5
     assert summary.p50_latency_ms <= summary.p95_latency_ms
     assert summary.failed_case_ids == ("summary-002",)
     assert "Recall@5" in report

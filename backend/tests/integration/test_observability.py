@@ -48,6 +48,7 @@ def test_ticket_confirmation_keeps_original_trace_and_run(client) -> None:
             "content": (
                 "Please create ticket for VPN outage, phone 13800138000, "
                 "mail user@example.com, card 1234567812345678"
+                "\n影响范围：仅本人\n已尝试：尚未尝试"
             ),
         },
     )
@@ -72,7 +73,7 @@ def test_ticket_confirmation_keeps_original_trace_and_run(client) -> None:
         headers={"X-Trace-Id": trace_id},
         json={
             "user_id": "u-001",
-            "content": "Please create ticket for VPN outage, phone 13800138000",
+            "content": "Please create ticket for VPN outage, phone 13800138000\n影响范围：仅本人\n已尝试：尚未尝试",
         },
     )
     events = _events(stream.text)

@@ -13,9 +13,14 @@ dependencies = [
     "fastapi>=0.115,<1",
     "httpx>=0.27,<1",
     "langgraph>=0.2,<2",
+    "markdown-it-py==4.2.0",
     "openai>=1.55,<3",
     "opentelemetry-api>=1.28,<2",
     "opentelemetry-sdk>=1.28,<2",
+    "opentelemetry-exporter-otlp-proto-http>=1.28,<2",
+    "prometheus-client>=0.21,<1",
+    "PyJWT[crypto]>=2.10,<3",
+    "python-multipart>=0.0.20,<1",
     "pymupdf>=1.24,<2",
     "pydantic-settings>=2.5,<3",
     "qdrant-client>=1.12,<1.17",
@@ -29,9 +34,11 @@ dependencies = [
 dev = [
     "pytest>=8,<10",
     "pytest-asyncio>=0.24,<2",
+    "ruff>=0.12,<1",
 ]
 rag = [
     "sentence-transformers>=3.1,<6",
+    "torch>=2.7,<3",
 ]
 
 [tool.setuptools.packages.find]
@@ -41,3 +48,22 @@ include = ["app*"]
 addopts = "--strict-markers"
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[tool.uv]
+# Local wheels must be rebuilt when application code changes, including in Docker's
+# persistent uv cache. The default only tracks packaging metadata.
+cache-keys = [{ file = "pyproject.toml" }, { file = "app/**/*.py" }]

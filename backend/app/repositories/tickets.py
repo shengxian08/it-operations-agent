@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import select, text
+from sqlalchemy import or_, select, text, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db.models import Conversation, Ticket, TicketEvent, ToolAudit
 from app.core.telemetry import redact_sensitive
 from app.schemas import TicketDraft
+from app.tickets.progress import clean_summary
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +25,8 @@ class TicketStatusRecord:
     ticket_number: str
     status: str
     latest_update: str
+    updated_at: datetime | None = None
+    update_kind: str | None = None
 
 
 class TicketRepository:
@@ -56,22 +59,22 @@ class TicketRepository:
             if ticket is None:
                 return None
 
-            latest_event = await session.scalar(
-                select(TicketEvent)
-                .where(TicketEvent.ticket_id == ticket.id)
-                .order_by(TicketEvent.created_at.desc(), TicketEvent.id.desc())
-                .limit(1)
-            )
-            latest_update = (
-                str(latest_event.details.get("summary"))
-                if latest_event and latest_event.details.get("summary")
-                else "工单状态已更新。"
-            )
-            return TicketStatusRecord(
-                ticket_number=ticket.ticket_number,
-                status=ticket.status,
-                latest_update=latest_update,
-            )
+            query = select(TicketEvent).where(TicketEvent.ticket_id == ticket.id, or_(
+                (TicketEvent.event_type == "created") & (TicketEvent.details["visibility"].astext.is_(None)),
+                (TicketEvent.event_type.in_(["created", "updated", "commented", "seeded"])) & (TicketEvent.details["visibility"].astext == "public")))
+            summary, stamp = "暂无可见处理记录。", None
+            while True:
+                events = list(await session.scalars(query.order_by(TicketEvent.created_at.desc(), TicketEvent.id.desc()).limit(50)))
+                for item in events:
+                    value = "工单已创建，等待 IT 支持处理。" if item.event_type == "created" else item.details.get("summary")
+                    if isinstance(value, str) and (cleaned := clean_summary(value)):
+                        summary, stamp = cleaned, item.created_at
+                        break
+                if stamp is not None or len(events) < 50:
+                    break
+                query = query.where(tuple_(TicketEvent.created_at, TicketEvent.id) < (events[-1].created_at, events[-1].id))
+            return TicketStatusRecord(ticket_number=ticket.ticket_number, status=ticket.status,
+                                      latest_update=summary, updated_at=stamp, update_kind="audit" if stamp else None)
 
     async def get_by_idempotency_key(
         self,
@@ -135,6 +138,7 @@ class TicketRepository:
                         event_type="created",
                         details={
                             "summary": "工单已创建，等待 IT 支持处理。",
+                            "visibility": "public",
                         },
                     ),
                     ToolAudit(

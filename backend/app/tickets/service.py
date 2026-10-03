@@ -6,6 +6,8 @@ from uuid import uuid4
 
 from redis.asyncio import Redis
 
+from app.core.telemetry import redact_sensitive
+from app.agent.ticket_intake import draft_facts_complete
 from app.repositories.tickets import StoredTicket, TicketRepository
 from app.schemas import TicketCreateResult, TicketDraft, TicketStatusResult
 
@@ -43,6 +45,8 @@ class TicketService:
             ticket_number=record.ticket_number,
             status=record.status,
             latest_update=record.latest_update,
+            updated_at=record.updated_at,
+            update_kind=record.update_kind,
         )
 
     async def issue_confirmation_token(
@@ -56,6 +60,9 @@ class TicketService:
         user_id = await self._repository.get_conversation_user_id(conversation_id)
         if user_id is None:
             raise PermissionError("conversation is not available")
+
+        if not draft_facts_complete(draft):
+            raise PermissionError("ticket details are incomplete")
 
         if trace_id is None or run_id is None:
             from app.core.telemetry import current_run_context
@@ -103,6 +110,8 @@ class TicketService:
         idempotency_key = idempotency_key.strip()
         if len(idempotency_key) > 128:
             raise PermissionError("idempotency key is invalid")
+        if not draft_facts_complete(draft):
+            raise PermissionError("ticket details are incomplete")
 
         draft_hash = self._draft_hash(draft)
         request_summary = self._request_summary(
@@ -191,12 +200,26 @@ class TicketService:
         draft_hash: str,
         conversation_id: str,
     ) -> str:
-        return json.dumps(
+        canonical_request = json.dumps(
             {
                 "category": draft.category,
                 "conversation_id": conversation_id,
                 "draft_hash": draft_hash,
                 "priority": draft.priority,
+            },
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        digest = TicketService._hash_text(canonical_request)
+        safe_digest = "-".join(
+            digest[offset : offset + 8] for offset in range(0, len(digest), 8)
+        )
+        return json.dumps(
+            {
+                "category": redact_sensitive(draft.category),
+                "priority": draft.priority,
+                "request_fingerprint": safe_digest,
             },
             ensure_ascii=True,
             sort_keys=True,

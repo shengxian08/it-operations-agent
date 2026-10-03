@@ -11,6 +11,14 @@ from app.schemas import TicketDraft, TicketStatusResult
 
 
 EXPECTED_STATE_FIELDS = {
+    "history",
+    "run_id",
+    "lease_token",
+    "ticket_context",
+    "ticket_lookup",
+    "ticket_intake_context",
+    "ticket_intake",
+    "knowledge_context",
     "user_id",
     "conversation_id",
     "message",
@@ -28,6 +36,10 @@ EXPECTED_STATE_FIELDS = {
     "trace_id",
     "error",
 }
+
+
+# Declared synthetic facts for tests whose subject is the confirmation path.
+COMPLETE_CREATE_REQUEST = "请建工单\n问题：VPN 一直失败\n影响范围：仅本人\n已尝试：重启客户端后仍失败"
 
 
 @dataclass
@@ -273,7 +285,7 @@ async def test_graph_never_calls_create_tool_before_confirmation() -> None:
     graph = build_graph(dependencies.as_graph_dependencies())
 
     result = await graph.ainvoke(
-        initial_state("VPN 一直失败，请建工单")
+        initial_state(COMPLETE_CREATE_REQUEST)
     )
 
     assert result["final_state"] == "awaiting_confirmation"
@@ -293,7 +305,7 @@ async def test_graph_handoffs_when_confirmation_token_is_blank() -> None:
     graph = build_graph(dependencies.as_graph_dependencies())
 
     result = await graph.ainvoke(
-        initial_state("VPN 一直失败，请建工单")
+        initial_state(COMPLETE_CREATE_REQUEST)
     )
 
     assert result["final_state"] == "handoff"
@@ -369,7 +381,7 @@ async def test_ticket_create_path_never_exceeds_step_budget(
     graph = build_graph(dependencies.as_graph_dependencies())
 
     result = await graph.ainvoke(
-        initial_state("VPN 一直失败，请建工单", step_count=step_count)
+        initial_state(COMPLETE_CREATE_REQUEST, step_count=step_count)
     )
 
     assert result["final_state"] == expected_state
@@ -596,7 +608,7 @@ async def test_ticket_draft_extracts_concise_title_and_attempted_steps() -> None
     graph = build_graph(dependencies.as_graph_dependencies())
 
     result = await graph.ainvoke(
-        initial_state("VPN 报错 691，我已重启客户端两次，还是不行，请建工单")
+        initial_state("请建工单\n问题：VPN 报错 691\n影响范围：仅本人\n已尝试：我已重启客户端两次，还是不行")
     )
 
     draft = result["ticket_draft"]
@@ -612,7 +624,7 @@ async def test_ticket_draft_extracts_concise_title_and_attempted_steps() -> None
         ("retrieval", "VPN 连不上怎么办？", "retrieval_failed"),
         ("model", "VPN 连不上怎么办？", "model_unavailable"),
         ("lookup", "查询工单 IT-2026-0001", "ticket_lookup_failed"),
-        ("confirmation", "VPN 一直失败，请建工单", "confirmation_unavailable"),
+        ("confirmation", COMPLETE_CREATE_REQUEST, "confirmation_unavailable"),
     ],
 )
 async def test_graph_safely_handoffs_dependency_failures(

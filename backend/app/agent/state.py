@@ -4,10 +4,14 @@ from app.rag.retriever import Citation, RetrievalHit
 from app.schemas import TicketDraft
 
 
-AgentIntent = Literal["knowledge", "ticket_lookup", "ticket_create"]
+AgentIntent = Literal["knowledge", "ticket_lookup", "ticket_create", "manual_handoff"]
 FinalState = Literal[
     "answered",
     "ticket_status",
+    "ticket_lookup_clarification",
+    "ticket_lookup_cancelled",
+    "ticket_collection",
+    "ticket_collection_cancelled",
     "awaiting_confirmation",
     "handoff",
 ]
@@ -30,6 +34,14 @@ class AgentState(TypedDict):
     handoff_reason: NotRequired[str]
     trace_id: NotRequired[str]
     error: NotRequired[str]
+    history: NotRequired[list[dict[str, str]]]
+    run_id: NotRequired[str]
+    lease_token: NotRequired[str]
+    ticket_context: NotRequired[dict[str, Any]]
+    ticket_lookup: NotRequired[dict[str, Any]]
+    ticket_intake_context: NotRequired[dict[str, Any]]
+    ticket_intake: NotRequired[dict[str, Any]]
+    knowledge_context: NotRequired[dict[str, Any]]
 
 
 class AgentStateUpdate(TypedDict, total=False):
@@ -49,3 +61,11 @@ class AgentStateUpdate(TypedDict, total=False):
     handoff_reason: str
     trace_id: str
     error: str
+    history: list[dict[str, str]]
+    run_id: str
+    lease_token: str
+    ticket_context: dict[str, Any]
+    ticket_lookup: dict[str, Any]
+    ticket_intake_context: dict[str, Any]
+    ticket_intake: dict[str, Any]
+    knowledge_context: dict[str, Any]

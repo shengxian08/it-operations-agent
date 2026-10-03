@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import get_settings
 from app.db.models import Base
+from app.production import identity_models, run_models, business_models, knowledge_models  # noqa: F401
 
 
 config = context.config
