@@ -1,0 +1,143 @@
+{
+  "schema_version": 2,
+  "date": "2026-10-03",
+  "stage": "final author verification after the single independent review and five fixes",
+  "classification": "controlled data and models; real disposable PG/Redis/Qdrant; Mock HTTP browser",
+  "reports": [
+    {
+      "name": "backend-final.xml",
+      "tests": 615,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 615,
+      "sha256": "1733a33e930ee397a24f76873dde93006f923dcf28cbdbe907f317ebe3c2ea77",
+      "classification": "real disposable PG/Redis/Qdrant; controlled models and identities",
+      "collected_tests": 615,
+      "collected_sha256": "1c83477b65c753b55e610e59882b2af1d2a29593c77fb5bc6cb67be8d31bc266"
+    },
+    {
+      "name": "frontend-tests.xml",
+      "tests": 46,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 46,
+      "sha256": "69243cb071364e09a20007f5d2be6971e0adee0159a91a3845164b1922b0a1ed",
+      "classification": "rendered React unit tests with controlled HTTP",
+      "collected_tests": 46,
+      "collected_sha256": "d1b37c97e7a42b29e4ac4ff47d28a7012090504f91ad0c1bcadc4611fe5f5d47"
+    },
+    {
+      "name": "browser-tests.xml",
+      "tests": 30,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 30,
+      "sha256": "66aebc68fbb9f9735d5fa602e43bf7e67876fa01cc7d378620244e95e2bb596a",
+      "classification": "Chromium UI; demo and controlled production HTTP",
+      "collected_tests": 30,
+      "collected_sha256": "715bf04453184d13c15abee7f642eef1cd7b15c4a8d809902de35fcee881c2f2"
+    }
+  ],
+  "independent_final_review": {
+    "status": "one review completed; original ready: No; five Important fixed and verified by author; no second independent approval",
+    "original_review_sha256": "587bae3e20614d17859593306a061042a9f2ec0fc28774ddf59ca0134be65e47",
+    "original_probes": {
+      "name": "independent-final.xml",
+      "tests": 13,
+      "failures": 13,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 0,
+      "sha256": "6ee3d42feb7943fc2a5bb7648cac3080dbbdb435d81ec6404c3ed815bcd5c172",
+      "classification": "independent synthetic business failures before fixes"
+    },
+    "author_rerun": {
+      "name": "independent-current.xml",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 13,
+      "sha256": "44ee24f47aef3519ccaa9d189739378e9276304e1ffccf2191d792cb7ff90f4a",
+      "classification": "author rerun of byte-identical independent probes; separate evidence directory"
+    }
+  },
+  "additional_checks": {
+    "build": "passed; production bundle demo disabled",
+    "ruff": "passed",
+    "uv_lock": "passed",
+    "alembic_check": "passed; no new upgrade operations",
+    "backend_and_frontend_report_gate": "pass; complete identities and zero failures/errors/skipped",
+    "mock_logic_tests": {
+      "name": "mock-logic-final.xml",
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 21,
+      "sha256": "7941b6829b5a3936ed36dac62220f538d45c426a6cae9701311b5e63c5a4d9b4",
+      "classification": "duplicate backend subset, not real quality"
+    },
+    "six_business_probe_inputs": "unchanged; controlled dependencies, no real model or business database calls"
+  },
+  "author_git_metadata": {
+    "checkout_commit": "979ed7f8a6a821e4ba2ad30b2c2d9d216cb2f63b",
+    "worktree_dirty": true,
+    "github_run_url": null
+  },
+  "github_delivery": "pending authorized normal branch push and exact-run validation",
+  "real_T06_T07": "unverified; approved inputs and target missing",
+  "historical_T05_stage": {
+    "stage": "T05 author local business validation",
+    "reports": [
+      {
+        "name": "backend-final.xml",
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "tests": 537,
+        "passed": 537,
+        "sha256": "6fbc38a83bbbba04fa6b723c7b56f9700b4fc30c1d873e705dc2015267ff8d29"
+      },
+      {
+        "name": "frontend-final.xml",
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "tests": 46,
+        "passed": 46,
+        "sha256": "0742277ba71cc87190e515e8bc509e9bcacb46a234e63a4a61f389c0ea3c3849"
+      },
+      {
+        "name": "browser-verified.xml",
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "tests": 30,
+        "passed": 30,
+        "sha256": "d6e62285b8a9f2cf003e6ae22c098aba86c5de898557095a882d36ff70ed33f6"
+      }
+    ],
+    "source_evidence_sha256": "71fe021cb0f5fa472513cede7eb919bf12de03115a3b7a577f678b1ebeac88fc"
+  },
+  "screenshots": [
+    {
+      "path": "images/handoff-390.png",
+      "sha256": "a458f3f238fdf47251a1e9f8ff36e183c5400dc12576cbe6ca20e8e0493842b3",
+      "classification": "synthetic Mock HTTP; visually inspected"
+    },
+    {
+      "path": "images/ticket-progress-support-390.png",
+      "sha256": "862e7f26921e51fe4ee55e0530635f4afac3f76c69bd7a274918a88e5a4a7693",
+      "classification": "synthetic Mock HTTP; visually inspected"
+    },
+    {
+      "path": "images/ticket-progress-employee-1440.png",
+      "sha256": "1de13b2bdf919456fc3594ecb11f1a6821c5b761a07a52ee76a68e21ee758a69",
+      "classification": "synthetic Mock HTTP; visually inspected"
+    }
+  ]
+}

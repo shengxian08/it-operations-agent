@@ -1,0 +1,4223 @@
+{
+  "date": "2026-10-02",
+  "source_conversation": "https://chatgpt.com/share/6abf55eb-56f8-83e9-ad6c-4a295bdb43ec",
+  "scope": "technology selection review and isolated experiments",
+  "synthetic_corpus": {
+    "documents": 82,
+    "chunks": 82,
+    "queries": 26,
+    "sha256": "ef522ef95f528a80067c046d64763d83d85f0e9f8c9d7a8e0f4de23296ee1e86",
+    "holdout_used_for_tuning": false
+  },
+  "real_embedding": {
+    "name": "BAAI/bge-small-zh-v1.5",
+    "revision": "7999e1d3359715c523056ef9478215996d62a620",
+    "dimensions": 512,
+    "normalized": true,
+    "query_instruction": "为这个句子生成表示以用于检索相关文章：",
+    "device": "cpu"
+  },
+  "embedding_environment": {
+    "python": "3.11.16",
+    "platform": "Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.41",
+    "torch_threads": 4,
+    "network": "disabled by docker run",
+    "versions": {
+      "sentence-transformers": "5.7.0",
+      "transformers": "5.18.0",
+      "torch": "2.14.1+cpu",
+      "qdrant-client": "1.16.2"
+    }
+  },
+  "embedding_performance": {
+    "dependency_import_seconds": 1.96376997699997,
+    "cold_model_load_seconds": 6.508557499999995,
+    "baseline_document_batch_seconds": 0.5671826589999682,
+    "context_document_batch_seconds": 0.5688565680000011,
+    "first_query_batch_seconds": 0.07189489000001004,
+    "warm_query_batches_seconds": [
+      0.0704571549999855,
+      0.07110598799999934,
+      0.06746650799999543
+    ],
+    "warm_query_batch_median_seconds": 0.0704571549999855,
+    "warm_single_query_seconds": [
+      0.007053490999965106,
+      0.008147113999996236,
+      0.005869345000007797
+    ],
+    "warm_single_query_median_seconds": 0.007053490999965106,
+    "repeated_query_max_abs_drift": 0.0,
+    "peak_process_rss_mib": 648.24609375
+  },
+  "retrieval_summary": {
+    "baseline_rrf:dev": {
+      "query_count": 8,
+      "answerable_query_count": 7,
+      "no_answer_count": 1,
+      "metrics_pre_rerank": {
+        "recall": 0.7142857142857143,
+        "precision": 0.14285714285714288,
+        "mrr": 0.7142857142857143,
+        "ndcg": 0.7142857142857143
+      },
+      "metrics_final": {
+        "recall": 0.7142857142857143,
+        "precision": 0.14285714285714288,
+        "mrr": 0.7142857142857143,
+        "ndcg": 0.7142857142857143
+      },
+      "retrieval_median_seconds": 0.015454350010259077,
+      "retrieval_p95_seconds": 0.02925719998893328,
+      "retrieval_range_seconds": [
+        0.004292600002372637,
+        0.03050779999466613
+      ]
+    },
+    "baseline_rrf:holdout": {
+      "query_count": 18,
+      "answerable_query_count": 15,
+      "no_answer_count": 3,
+      "metrics_pre_rerank": {
+        "recall": 0.8,
+        "precision": 0.16,
+        "mrr": 0.6888888888888889,
+        "ndcg": 0.7174573004761944
+      },
+      "metrics_final": {
+        "recall": 0.8,
+        "precision": 0.16,
+        "mrr": 0.6833333333333333,
+        "ndcg": 0.7128357376810872
+      },
+      "retrieval_median_seconds": 0.015075050003360957,
+      "retrieval_p95_seconds": 0.026539599988609552,
+      "retrieval_range_seconds": [
+        0.00408469999092631,
+        0.02852069999789819
+      ]
+    },
+    "baseline_weighted:dev": {
+      "query_count": 8,
+      "answerable_query_count": 7,
+      "no_answer_count": 1,
+      "metrics_pre_rerank": {
+        "recall": 0.7142857142857143,
+        "precision": 0.14285714285714288,
+        "mrr": 0.7142857142857143,
+        "ndcg": 0.7142857142857143
+      },
+      "metrics_final": {
+        "recall": 0.7142857142857143,
+        "precision": 0.14285714285714288,
+        "mrr": 0.7142857142857143,
+        "ndcg": 0.7142857142857143
+      },
+      "retrieval_median_seconds": 0.016746299996157177,
+      "retrieval_p95_seconds": 0.030520500004058704,
+      "retrieval_range_seconds": [
+        0.004459200019482523,
+        0.03170680001494475
+      ]
+    },
+    "baseline_weighted:holdout": {
+      "query_count": 18,
+      "answerable_query_count": 15,
+      "no_answer_count": 3,
+      "metrics_pre_rerank": {
+        "recall": 0.8666666666666667,
+        "precision": 0.17333333333333334,
+        "mrr": 0.7388888888888889,
+        "ndcg": 0.7707737541096567
+      },
+      "metrics_final": {
+        "recall": 0.8666666666666667,
+        "precision": 0.17333333333333334,
+        "mrr": 0.7333333333333333,
+        "ndcg": 0.7661521913145496
+      },
+      "retrieval_median_seconds": 0.01528784999391064,
+      "retrieval_p95_seconds": 0.025616099999751896,
+      "retrieval_range_seconds": [
+        0.004026799986604601,
+        0.02733840001747012
+      ]
+    },
+    "heading_context_weighted:dev": {
+      "query_count": 8,
+      "answerable_query_count": 7,
+      "no_answer_count": 1,
+      "metrics_pre_rerank": {
+        "recall": 1.0,
+        "precision": 0.2,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      "metrics_final": {
+        "recall": 1.0,
+        "precision": 0.2,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      "retrieval_median_seconds": 0.0101859999995213,
+      "retrieval_p95_seconds": 0.026012899994384497,
+      "retrieval_range_seconds": [
+        0.004087000008439645,
+        0.028708700003335252
+      ]
+    },
+    "heading_context_weighted:holdout": {
+      "query_count": 18,
+      "answerable_query_count": 15,
+      "no_answer_count": 3,
+      "metrics_pre_rerank": {
+        "recall": 1.0,
+        "precision": 0.2,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      "metrics_final": {
+        "recall": 1.0,
+        "precision": 0.2,
+        "mrr": 0.9666666666666667,
+        "ndcg": 0.9753953169047639
+      },
+      "retrieval_median_seconds": 0.005033900000853464,
+      "retrieval_p95_seconds": 0.02602610000758432,
+      "retrieval_range_seconds": [
+        0.00427000000490807,
+        0.026507000002311543
+      ]
+    }
+  },
+  "current_source_reproduction": {
+    "pilot_sha256": "34b61255a563c1ca0b9340efb2e3e534ea0c33be7785b9ac37bb9aaf6bb92d9f",
+    "current_sha256": "6e2026bb8a85bbf7086baf3bbc7106664fa3ce1ad9473d37a2a65999ad576071",
+    "current_app_source": "/workspace/backend/app/rag/ingest.py",
+    "current_app_source_sha256": "b2f72a33c284df0bf9a6b09f355cfbeced2deebf5ea99166b05b4043726e7300",
+    "checks": {
+      "corpus_hash": true,
+      "model_identity": true,
+      "raw_chunk_records": true,
+      "baseline_and_context_inputs": true,
+      "loaded_current_source": true,
+      "all_vectors_exactly_equal": true
+    },
+    "max_abs_vector_drift": {
+      "baseline": 0.0,
+      "heading_context": 0.0,
+      "queries": 0.0
+    },
+    "pilot_retrieval_inputs_verified_against_current_source": true
+  },
+  "current_source_embedding_performance": {
+    "dependency_import_seconds": 1.8980784100003802,
+    "cold_model_load_seconds": 6.194854151000072,
+    "baseline_document_batch_seconds": 0.7934545449998041,
+    "context_document_batch_seconds": 0.49627595099991595,
+    "first_query_batch_seconds": 0.06621721999999863,
+    "warm_query_batches_seconds": [
+      0.06295955899986438,
+      0.06527848699988681,
+      0.07468084900028771
+    ],
+    "warm_query_batch_median_seconds": 0.06527848699988681,
+    "warm_single_query_seconds": [
+      0.005550370999571896,
+      0.0054759009999543196,
+      0.009874350000245613
+    ],
+    "warm_single_query_median_seconds": 0.005550370999571896,
+    "repeated_query_max_abs_drift": 0.0,
+    "peak_process_rss_mib": 651.04296875
+  },
+  "permission_leaks": [],
+  "index_manifest": {
+    "baseline": {
+      "collection": "technology_review_20261002a_baseline",
+      "point_count": 82,
+      "model": {
+        "name": "BAAI/bge-small-zh-v1.5",
+        "revision": "7999e1d3359715c523056ef9478215996d62a620",
+        "dimensions": 512,
+        "normalized": true,
+        "query_instruction": "为这个句子生成表示以用于检索相关文章：",
+        "device": "cpu"
+      },
+      "inputs_sha256": "0581c068d44ced2a122d95b0ae11b5d98241cdc1806f3d7e917569b3db8b907b"
+    },
+    "heading_context": {
+      "collection": "technology_review_20261002a_heading_context",
+      "point_count": 82,
+      "model": {
+        "name": "BAAI/bge-small-zh-v1.5",
+        "revision": "7999e1d3359715c523056ef9478215996d62a620",
+        "dimensions": 512,
+        "normalized": true,
+        "query_instruction": "为这个句子生成表示以用于检索相关文章：",
+        "device": "cpu"
+      },
+      "inputs_sha256": "646467735bcd66270d6a1d26cb9ed2721049bc6e07be9eba75ee4af567a2b9a7"
+    }
+  },
+  "tokens": {
+    "baseline": {
+      "max": 71,
+      "over_512_count": 0
+    },
+    "heading_context": {
+      "max": 90,
+      "over_512_count": 0
+    }
+  },
+  "pdf_boundaries": [
+    {
+      "id": "ruled-table",
+      "expected": "accepted",
+      "actual": "accepted",
+      "seconds": [
+        0.014893299987306818,
+        0.005215700017288327,
+        0.005213199998252094
+      ],
+      "checks": {
+        "headers_exact": true,
+        "cells_exact": true,
+        "all_cell_bboxes_present": true,
+        "cell_bboxes_match_drawn_grid": true,
+        "page_one": true,
+        "units_and_condition_and_note_in_chunks": true
+      }
+    },
+    {
+      "id": "prose",
+      "expected": "accepted",
+      "actual": "accepted",
+      "seconds": [
+        0.005695799976820126,
+        0.005342300020856783,
+        0.005919599992921576
+      ],
+      "checks": null
+    },
+    {
+      "id": "merged",
+      "expected": "rejected",
+      "actual": "rejected",
+      "seconds": [
+        0.004658400022890419,
+        0.00441219998174347,
+        0.004226699995342642
+      ],
+      "checks": null
+    },
+    {
+      "id": "borderless",
+      "expected": "rejected",
+      "actual": "rejected",
+      "seconds": [
+        0.002441900025587529,
+        0.0022780999715905637,
+        0.00224170001456514
+      ],
+      "checks": null
+    },
+    {
+      "id": "scan-with-footer",
+      "expected": "rejected",
+      "actual": "rejected",
+      "seconds": [
+        0.0015218000044114888,
+        0.0008596999978180975,
+        0.0007141999958548695
+      ],
+      "checks": null
+    },
+    {
+      "id": "tiled-scan",
+      "expected": "rejected",
+      "actual": "rejected",
+      "seconds": [
+        0.0013376999995671213,
+        0.0011391000007279217,
+        0.0011071999906562269
+      ],
+      "checks": null
+    },
+    {
+      "id": "mixed-supported-and-borderless",
+      "expected": "rejected",
+      "actual": "rejected",
+      "seconds": [
+        0.006414600007701665,
+        0.006502099975477904,
+        0.006319400010397658
+      ],
+      "checks": null
+    }
+  ],
+  "test_checks": {
+    "controls.xml": {
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "business-and-provenance.xml": {
+      "tests": 39,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "prior_scope_unchanged": {
+    "compared_files": 37,
+    "mismatches": []
+  },
+  "real_customer_pdf_quality_verified": false,
+  "real_answer_citation_or_refusal_quality_verified": false,
+  "target_linux_capacity_verified": false,
+  "production_ready": false,
+  "candidate_preflight_at_baseline_time": {
+    "docling": {
+      "module_available": false,
+      "cached_model_revisions": [],
+      "executed": false,
+      "reason": "parser package and verified artifacts absent"
+    },
+    "mineru": {
+      "module_available": false,
+      "cached_model_revisions": [],
+      "executed": false,
+      "reason": "parser package and verified artifacts absent"
+    },
+    "bge-reranker-v2-m3": {
+      "module_available": true,
+      "cached_model_revisions": [],
+      "executed": false,
+      "reason": "candidate pinned model weights absent from read-only offline cache"
+    },
+    "qwen3-reranker-0.6b": {
+      "module_available": true,
+      "cached_model_revisions": [],
+      "executed": false,
+      "reason": "candidate pinned model weights absent from read-only offline cache"
+    },
+    "qwen3-embedding-0.6b": {
+      "module_available": true,
+      "cached_model_revisions": [],
+      "executed": false,
+      "reason": "candidate pinned model weights absent from read-only offline cache"
+    }
+  },
+  "raw_evidence": [
+    {
+      "path": "artifacts/technology-review/business-and-provenance.xml",
+      "bytes": 6133,
+      "sha256": "ba17128b1fb6dead5b86bb2b912394373c9df10bb4131bdee3aaa60c0f7855fc"
+    },
+    {
+      "path": "artifacts/technology-review/business-probes.json",
+      "bytes": 1465,
+      "sha256": "fb8721cad8e889e1fb976af68d75d442ca7b7dbfe876e2343e7ae223d817cfa0"
+    },
+    {
+      "path": "artifacts/technology-review/controls.xml",
+      "bytes": 1186,
+      "sha256": "9d961da2a3b7aaf247d208844ae1166d351c87a4a538a042cee664ee5ddab57f"
+    },
+    {
+      "path": "artifacts/technology-review/corpus.json",
+      "bytes": 42344,
+      "sha256": "ef522ef95f528a80067c046d64763d83d85f0e9f8c9d7a8e0f4de23296ee1e86"
+    },
+    {
+      "path": "artifacts/technology-review/current-code-encoded.json",
+      "bytes": 2226624,
+      "sha256": "6e2026bb8a85bbf7086baf3bbc7106664fa3ce1ad9473d37a2a65999ad576071"
+    },
+    {
+      "path": "artifacts/technology-review/current-source-verification.json",
+      "bytes": 742,
+      "sha256": "760ea15278294b4e87930dd782c6da3756f7ad5db478e0010af062d3373e42dd"
+    },
+    {
+      "path": "artifacts/technology-review/docling/build-cpu-wheel-fix-exit.txt",
+      "bytes": 3,
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+    },
+    {
+      "path": "artifacts/technology-review/docling/build-exit.txt",
+      "bytes": 3,
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+    },
+    {
+      "path": "artifacts/technology-review/docling/build-native-libs-exit.txt",
+      "bytes": 3,
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+    },
+    {
+      "path": "artifacts/technology-review/docling/comparison.json",
+      "bytes": 98661,
+      "sha256": "b6b2f0a89f52aaa91cebabb1adef66c9cbd8fd27171f224f8e9fe1090d1f7a46"
+    },
+    {
+      "path": "artifacts/technology-review/docling/cpu-wheel-fix-invocation.json",
+      "bytes": 509,
+      "sha256": "67f6ff2e123ac0631a6ae8185c2854d3a14c8d8d03b9d247c28242ff092b46d5"
+    },
+    {
+      "path": "artifacts/technology-review/docling/model-manifest.json",
+      "bytes": 15541,
+      "sha256": "385c651c2d0d11d88cc1cd9799f5dc93bc151ef699423fc0b3c0c6c31dfa3dd7"
+    },
+    {
+      "path": "artifacts/technology-review/docling/preflight-cpu-exit.txt",
+      "bytes": 3,
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+    },
+    {
+      "path": "artifacts/technology-review/docling/preflight-exit.txt",
+      "bytes": 3,
+      "sha256": "f1b2f662800122bed0ff255693df89c4487fbdcf453d3524a42d4ec20c3d9c04"
+    },
+    {
+      "path": "artifacts/technology-review/docling/prepare-exit.txt",
+      "bytes": 3,
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+    },
+    {
+      "path": "artifacts/technology-review/docling/prepare-invocation.json",
+      "bytes": 546,
+      "sha256": "1affba139af30989022168643eaca91fc2b7c4576ffbe72ba8e134b69588b130"
+    },
+    {
+      "path": "artifacts/technology-review/docling/prepare-progress.json",
+      "bytes": 15541,
+      "sha256": "385c651c2d0d11d88cc1cd9799f5dc93bc151ef699423fc0b3c0c6c31dfa3dd7"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run/environment.json",
+      "bytes": 19130,
+      "sha256": "eb83c32543c2187af51355a389f9739f0e1d400a1d0e4656780a46669f0e0944"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run/results.json",
+      "bytes": 22731,
+      "sha256": "27ceb21331f7a8c7448e3b6225c7ff3354e76dae8d84505eabc23209b2fb404f"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run/ruled-table/failure.json",
+      "bytes": 3306,
+      "sha256": "1fa5b80bbd9aadbe83229c3bdcc7bfebf984ebf96fd2f7249a8aa6942df3bdcf"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run/run-error.json",
+      "bytes": 13810,
+      "sha256": "c658f1ff5ddbbebcb934fff8bb5d8beaf4bf639640e68127a081d9cea94dfc51"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run/verified-model-manifest.json",
+      "bytes": 15541,
+      "sha256": "385c651c2d0d11d88cc1cd9799f5dc93bc151ef699423fc0b3c0c6c31dfa3dd7"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-exit.txt",
+      "bytes": 3,
+      "sha256": "f1b2f662800122bed0ff255693df89c4487fbdcf453d3524a42d4ec20c3d9c04"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-invocation.json",
+      "bytes": 2440,
+      "sha256": "c1494ff721838c3fd75d12d73ca8f9511f88b328cbf267c41e220108ffff21cd"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-mounts.json",
+      "bytes": 870,
+      "sha256": "343235287d3d0e9757c5688acd2bd61881c50daf93479f5fbf1a4e69f7253f9f"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-native-exit.txt",
+      "bytes": 3,
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-native-invocation.json",
+      "bytes": 1462,
+      "sha256": "af99676922c84eed43aa592f84a7f13c4ec12ed6979e5ac7a697cb8612d61f57"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-native-mounts.json",
+      "bytes": 887,
+      "sha256": "b61fa754f25cf3de0e717ee73af2f290234f59fae568606df0a1e8b2398e03e6"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-native-state-final.json",
+      "bytes": 224,
+      "sha256": "f70e4e9963ef4af7dfd8c6240ebb97a5c8dc2516692f492bc73bad59f3ffba42"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-state-final.json",
+      "bytes": 225,
+      "sha256": "057b837368bc6f78ac959a4dec68689eab36d9b7cd97e7eddf6bce4254dcc64a"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-state-in-progress.json",
+      "bytes": 225,
+      "sha256": "057b837368bc6f78ac959a4dec68689eab36d9b7cd97e7eddf6bce4254dcc64a"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/borderless/document-0.json",
+      "bytes": 2522,
+      "sha256": "d413d6dd00ab75fa690020927a77161e8979e5d933b921ecff06f16e115a3976"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/borderless/document-1.json",
+      "bytes": 2522,
+      "sha256": "d413d6dd00ab75fa690020927a77161e8979e5d933b921ecff06f16e115a3976"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/borderless/document-2.json",
+      "bytes": 2522,
+      "sha256": "d413d6dd00ab75fa690020927a77161e8979e5d933b921ecff06f16e115a3976"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/borderless/document-3.json",
+      "bytes": 2522,
+      "sha256": "d413d6dd00ab75fa690020927a77161e8979e5d933b921ecff06f16e115a3976"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/borderless/evidence-0.json",
+      "bytes": 2171,
+      "sha256": "3da3fa339b4bd43980b3142137b61a8069729bb97bd88aa480e53a82dc0339c3"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/borderless/evidence-1.json",
+      "bytes": 2171,
+      "sha256": "3da3fa339b4bd43980b3142137b61a8069729bb97bd88aa480e53a82dc0339c3"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/borderless/evidence-2.json",
+      "bytes": 2171,
+      "sha256": "3da3fa339b4bd43980b3142137b61a8069729bb97bd88aa480e53a82dc0339c3"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/borderless/evidence-3.json",
+      "bytes": 2171,
+      "sha256": "3da3fa339b4bd43980b3142137b61a8069729bb97bd88aa480e53a82dc0339c3"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/borderless/runs.json",
+      "bytes": 1517,
+      "sha256": "2c402dbf8bd5fbcf64276538567d192cc72bc576939999886c9349e6aa504ce2"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/environment.json",
+      "bytes": 19130,
+      "sha256": "132d39257725303cf59ea7ba22dfb52ee6c82708805b26beedd1617cbb5cbb64"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/merged/document-0.json",
+      "bytes": 13639,
+      "sha256": "3bd25b8cdb697d127907e2f19a936d9beb66f88be0f760b24fdfed374d56c320"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/merged/document-1.json",
+      "bytes": 13639,
+      "sha256": "3bd25b8cdb697d127907e2f19a936d9beb66f88be0f760b24fdfed374d56c320"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/merged/document-2.json",
+      "bytes": 13639,
+      "sha256": "3bd25b8cdb697d127907e2f19a936d9beb66f88be0f760b24fdfed374d56c320"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/merged/document-3.json",
+      "bytes": 13639,
+      "sha256": "3bd25b8cdb697d127907e2f19a936d9beb66f88be0f760b24fdfed374d56c320"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/merged/evidence-0.json",
+      "bytes": 13456,
+      "sha256": "aca9f62f1ded2436265ffdff267822c965c5e6a0422b93a751828b980483b9cc"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/merged/evidence-1.json",
+      "bytes": 13456,
+      "sha256": "aca9f62f1ded2436265ffdff267822c965c5e6a0422b93a751828b980483b9cc"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/merged/evidence-2.json",
+      "bytes": 13456,
+      "sha256": "aca9f62f1ded2436265ffdff267822c965c5e6a0422b93a751828b980483b9cc"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/merged/evidence-3.json",
+      "bytes": 13456,
+      "sha256": "aca9f62f1ded2436265ffdff267822c965c5e6a0422b93a751828b980483b9cc"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/merged/runs.json",
+      "bytes": 1513,
+      "sha256": "47e998dba06da975a872442ffd40926cc45bf2881bdf3325418d2a0e652c47cd"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/mixed-supported-and-borderless/document-0.json",
+      "bytes": 18793,
+      "sha256": "0de0dad0e15948de28051c1f5e4f96547500841a150c61ba89079f11c1d0e14e"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/mixed-supported-and-borderless/document-1.json",
+      "bytes": 18793,
+      "sha256": "0de0dad0e15948de28051c1f5e4f96547500841a150c61ba89079f11c1d0e14e"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/mixed-supported-and-borderless/document-2.json",
+      "bytes": 18793,
+      "sha256": "0de0dad0e15948de28051c1f5e4f96547500841a150c61ba89079f11c1d0e14e"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/mixed-supported-and-borderless/document-3.json",
+      "bytes": 18793,
+      "sha256": "0de0dad0e15948de28051c1f5e4f96547500841a150c61ba89079f11c1d0e14e"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/mixed-supported-and-borderless/evidence-0.json",
+      "bytes": 18248,
+      "sha256": "03868a59498385c4d8894e35c6fbb55f88438b2e7aad5bc1a92bac75ff5d8e0a"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/mixed-supported-and-borderless/evidence-1.json",
+      "bytes": 18248,
+      "sha256": "03868a59498385c4d8894e35c6fbb55f88438b2e7aad5bc1a92bac75ff5d8e0a"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/mixed-supported-and-borderless/evidence-2.json",
+      "bytes": 18248,
+      "sha256": "03868a59498385c4d8894e35c6fbb55f88438b2e7aad5bc1a92bac75ff5d8e0a"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/mixed-supported-and-borderless/evidence-3.json",
+      "bytes": 18248,
+      "sha256": "03868a59498385c4d8894e35c6fbb55f88438b2e7aad5bc1a92bac75ff5d8e0a"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/mixed-supported-and-borderless/runs.json",
+      "bytes": 1537,
+      "sha256": "fe9923de5fd56ebd6b53db3693b9360cbfb88d4373d2655dfbc5a2af6dd973ba"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/prose/document-0.json",
+      "bytes": 2075,
+      "sha256": "a7894382624c574f298b5521bc9d3d9c829e1c9852221c24b7dee88a6af85a8f"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/prose/document-1.json",
+      "bytes": 2075,
+      "sha256": "a7894382624c574f298b5521bc9d3d9c829e1c9852221c24b7dee88a6af85a8f"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/prose/document-2.json",
+      "bytes": 2075,
+      "sha256": "a7894382624c574f298b5521bc9d3d9c829e1c9852221c24b7dee88a6af85a8f"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/prose/document-3.json",
+      "bytes": 2075,
+      "sha256": "a7894382624c574f298b5521bc9d3d9c829e1c9852221c24b7dee88a6af85a8f"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/prose/evidence-0.json",
+      "bytes": 1916,
+      "sha256": "a48b174fa8baf9cd5a57c901ea0eaa9f147d6fb6d1848744263f5f36baeb2cd7"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/prose/evidence-1.json",
+      "bytes": 1916,
+      "sha256": "a48b174fa8baf9cd5a57c901ea0eaa9f147d6fb6d1848744263f5f36baeb2cd7"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/prose/evidence-2.json",
+      "bytes": 1916,
+      "sha256": "a48b174fa8baf9cd5a57c901ea0eaa9f147d6fb6d1848744263f5f36baeb2cd7"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/prose/evidence-3.json",
+      "bytes": 1916,
+      "sha256": "a48b174fa8baf9cd5a57c901ea0eaa9f147d6fb6d1848744263f5f36baeb2cd7"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/prose/runs.json",
+      "bytes": 1492,
+      "sha256": "dc7bfddf5f20af45e8b6a16723faf4f36f30a593ad95d52fd09cc71d278927f0"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/results.json",
+      "bytes": 31374,
+      "sha256": "51780f763c4e85d04e6f8b87aa9f929faf63e88d1ba441c4a56a4f154d2fc5ed"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/ruled-table/document-0.json",
+      "bytes": 13649,
+      "sha256": "1f313f09bba36db3d14f8e133f32115ed77794c91277060bb1f30e8ff1ed58e5"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/ruled-table/document-1.json",
+      "bytes": 13649,
+      "sha256": "1f313f09bba36db3d14f8e133f32115ed77794c91277060bb1f30e8ff1ed58e5"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/ruled-table/document-2.json",
+      "bytes": 13649,
+      "sha256": "1f313f09bba36db3d14f8e133f32115ed77794c91277060bb1f30e8ff1ed58e5"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/ruled-table/document-3.json",
+      "bytes": 13649,
+      "sha256": "1f313f09bba36db3d14f8e133f32115ed77794c91277060bb1f30e8ff1ed58e5"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/ruled-table/evidence-0.json",
+      "bytes": 18117,
+      "sha256": "233f592a341c2c53ede0e5e72a2d9cdb9e1004e306a358508981c5b5d10086d7"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/ruled-table/evidence-1.json",
+      "bytes": 18117,
+      "sha256": "233f592a341c2c53ede0e5e72a2d9cdb9e1004e306a358508981c5b5d10086d7"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/ruled-table/evidence-2.json",
+      "bytes": 18117,
+      "sha256": "233f592a341c2c53ede0e5e72a2d9cdb9e1004e306a358508981c5b5d10086d7"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/ruled-table/evidence-3.json",
+      "bytes": 18117,
+      "sha256": "233f592a341c2c53ede0e5e72a2d9cdb9e1004e306a358508981c5b5d10086d7"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/ruled-table/runs.json",
+      "bytes": 1400,
+      "sha256": "b344a02a76f07365f077e163fe4a9ab4a7238b317ce21d41d6d41a70ab1c6ec3"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/scan-with-footer/document-0.json",
+      "bytes": 1528,
+      "sha256": "77edf7db592c2e419b91b7ca13ef446580a01dd7a77f979eb325d4817e997173"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/scan-with-footer/document-1.json",
+      "bytes": 1528,
+      "sha256": "77edf7db592c2e419b91b7ca13ef446580a01dd7a77f979eb325d4817e997173"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/scan-with-footer/document-2.json",
+      "bytes": 1528,
+      "sha256": "77edf7db592c2e419b91b7ca13ef446580a01dd7a77f979eb325d4817e997173"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/scan-with-footer/document-3.json",
+      "bytes": 1528,
+      "sha256": "77edf7db592c2e419b91b7ca13ef446580a01dd7a77f979eb325d4817e997173"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/scan-with-footer/evidence-0.json",
+      "bytes": 1361,
+      "sha256": "169416681bff3a8067eac171fdd7d23ad3a70add802a32834667d66495243098"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/scan-with-footer/evidence-1.json",
+      "bytes": 1361,
+      "sha256": "169416681bff3a8067eac171fdd7d23ad3a70add802a32834667d66495243098"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/scan-with-footer/evidence-2.json",
+      "bytes": 1361,
+      "sha256": "169416681bff3a8067eac171fdd7d23ad3a70add802a32834667d66495243098"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/scan-with-footer/evidence-3.json",
+      "bytes": 1361,
+      "sha256": "169416681bff3a8067eac171fdd7d23ad3a70add802a32834667d66495243098"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/scan-with-footer/runs.json",
+      "bytes": 1522,
+      "sha256": "0133116fcba2d3907c1f2a99cb85ce48d34d57aea328725a201f0139c336c51c"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/tiled-scan/document-0.json",
+      "bytes": 1809,
+      "sha256": "9fa48592829202d85c0fa2dd3cbfdd2b9bd36c28cd9ada611b21deae6fcdf984"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/tiled-scan/document-1.json",
+      "bytes": 1809,
+      "sha256": "9fa48592829202d85c0fa2dd3cbfdd2b9bd36c28cd9ada611b21deae6fcdf984"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/tiled-scan/document-2.json",
+      "bytes": 1809,
+      "sha256": "9fa48592829202d85c0fa2dd3cbfdd2b9bd36c28cd9ada611b21deae6fcdf984"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/tiled-scan/document-3.json",
+      "bytes": 1809,
+      "sha256": "9fa48592829202d85c0fa2dd3cbfdd2b9bd36c28cd9ada611b21deae6fcdf984"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/tiled-scan/evidence-0.json",
+      "bytes": 1386,
+      "sha256": "8a9f9ded7e61ca9bd1c7608a09cc9c4342f75ef9f1e8c22800e8a2dab0477740"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/tiled-scan/evidence-1.json",
+      "bytes": 1386,
+      "sha256": "8a9f9ded7e61ca9bd1c7608a09cc9c4342f75ef9f1e8c22800e8a2dab0477740"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/tiled-scan/evidence-2.json",
+      "bytes": 1386,
+      "sha256": "8a9f9ded7e61ca9bd1c7608a09cc9c4342f75ef9f1e8c22800e8a2dab0477740"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/tiled-scan/evidence-3.json",
+      "bytes": 1386,
+      "sha256": "8a9f9ded7e61ca9bd1c7608a09cc9c4342f75ef9f1e8c22800e8a2dab0477740"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/tiled-scan/runs.json",
+      "bytes": 1516,
+      "sha256": "c9f51bdbb2741b8c7d3e931ee061d8045a75e6916b8577b4281224ace9e0924e"
+    },
+    {
+      "path": "artifacts/technology-review/docling/run-with-native-libs/verified-model-manifest.json",
+      "bytes": 15541,
+      "sha256": "385c651c2d0d11d88cc1cd9799f5dc93bc151ef699423fc0b3c0c6c31dfa3dd7"
+    },
+    {
+      "path": "artifacts/technology-review/docling/same-input-comparison.json",
+      "bytes": 12319,
+      "sha256": "a3ea89c7bfd3f40189ff606fb3a4617fa47e65ea7eef98e30e5d8561b3c4f69a"
+    },
+    {
+      "path": "artifacts/technology-review/docling/same-input-comparison.windows-superseded.json",
+      "bytes": 4848,
+      "sha256": "afc9c96c3f4101490f1a1100751e9508664158030635a52e8a3dd9dd72334243"
+    },
+    {
+      "path": "artifacts/technology-review/docling/same-input-linux-comparison.json",
+      "bytes": 12319,
+      "sha256": "a3ea89c7bfd3f40189ff606fb3a4617fa47e65ea7eef98e30e5d8561b3c4f69a"
+    },
+    {
+      "path": "artifacts/technology-review/encoded.json",
+      "bytes": 2226475,
+      "sha256": "34b61255a563c1ca0b9340efb2e3e534ea0c33be7785b9ac37bb9aaf6bb92d9f"
+    },
+    {
+      "path": "artifacts/technology-review/final-verification.json",
+      "bytes": 3633,
+      "sha256": "1f1c33e6a227e8fb8745257588b1db1a51ca8970a19c6c575b769e7db5468991"
+    },
+    {
+      "path": "artifacts/technology-review/parsing.json",
+      "bytes": 16143,
+      "sha256": "4d60e1b8c847afb86fe9325cb5471fb303c6625d4b8c83e158d8fd810b83203a"
+    },
+    {
+      "path": "artifacts/technology-review/pymupdf-linux/parsing.json",
+      "bytes": 16262,
+      "sha256": "cbc51d563bc68777932253fea10ea772cad635848699581de97ca073d680816f"
+    },
+    {
+      "path": "artifacts/technology-review/qwen-assets.json",
+      "bytes": 2351,
+      "sha256": "3ffbb024883c9d41017ec0cbd4496d62112ad89eecdd8374221071fce00fb2ef"
+    },
+    {
+      "path": "artifacts/technology-review/qwen-reranker.json",
+      "bytes": 200861,
+      "sha256": "e1ce1f8f7849ff087bb0687a8faf2fbef5b17e78e5d1c3b05c382d8984f1c8e2"
+    },
+    {
+      "path": "artifacts/technology-review/retrieval.json",
+      "bytes": 699924,
+      "sha256": "655a97980279bcf70f02952679a4c1afb9866bf28e5779840bbc7c6263c12d95"
+    },
+    {
+      "path": "artifacts/technology-review/token-audit.json",
+      "bytes": 2679,
+      "sha256": "8767b7ad2b09ff581e479689cf4bca67795bc94bf84f8f70a04d00a75125d47b"
+    }
+  ],
+  "qwen_reranker": {
+    "repo": "Qwen/Qwen3-Reranker-0.6B",
+    "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+    "device": "cpu",
+    "dtype": "float32",
+    "max_length": 512,
+    "batch_size": 8,
+    "summary": {
+      "dev": {
+        "answerable_count": 7,
+        "recall": 0.7142857142857143,
+        "precision": 0.14285714285714288,
+        "mrr": 0.7142857142857143,
+        "ndcg": 0.7142857142857143
+      },
+      "holdout": {
+        "answerable_count": 15,
+        "recall": 0.8666666666666667,
+        "precision": 0.17333333333333334,
+        "mrr": 0.8333333333333334,
+        "ndcg": 0.8420619835714305
+      }
+    },
+    "performance": {
+      "cold_load_seconds": 3.960783969999966,
+      "all_pairs_count": 1482,
+      "all_pairs_seconds": 539.0706616709999,
+      "warm_query_candidate_count": 54,
+      "warm_query_repeats_seconds": [
+        19.290720102999785,
+        18.767471656999987,
+        18.074902259999817
+      ],
+      "warm_query_median_seconds": 18.767471656999987,
+      "repeat_max_abs_score_drift": 1.52587890625e-05,
+      "peak_process_rss_mib": 3833.90625
+    }
+  },
+  "docling": {
+    "schema": 1,
+    "synthetic": true,
+    "real_customer_pdf": false,
+    "same_input_hashes": true,
+    "same_cpu_memory_limit": "2 CPU / 4 GiB, local Linux containers",
+    "baseline_result_sha256": "cbc51d563bc68777932253fea10ea772cad635848699581de97ca073d680816f",
+    "candidate_result_sha256": "51780f763c4e85d04e6f8b87aa9f929faf63e88d1ba441c4a56a4f154d2fc5ed",
+    "baseline_parser": {
+      "name": "PyMuPDF",
+      "version": "1.28.2",
+      "pipeline": "ruled-cells-normalized-page-context-v2",
+      "ocr": false
+    },
+    "baseline_environment": {
+      "python": "3.11.16",
+      "platform": "Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.41",
+      "pdf_module": "/workspace/backend/app/rag/pdf.py",
+      "pdf_module_sha256": "b9500ffe6d614068be657625b2641788832548b9da7e6fd0334efec7145fab68",
+      "process_peak_rss_bytes": 247455744,
+      "cgroup": {
+        "cpu.max": "200000 100000",
+        "memory.max": "4294967296",
+        "memory.peak": "216760320",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+      }
+    },
+    "candidate_versions": {
+      "python": "3.11.16 (main, Sep 19 2026, 01:04:43) [GCC 14.2.0]",
+      "platform": "Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.41",
+      "docling": "2.132.0",
+      "docling-core": "2.99.0",
+      "docling-ibm-models": "4.0.3",
+      "docling-parse": "7.22.1",
+      "torch": "2.14.1+cpu",
+      "torchvision": "0.29.1+cpu",
+      "transformers": "5.18.0",
+      "huggingface-hub": "1.33.0",
+      "pymupdf": "1.28.2",
+      "numpy": "2.4.6",
+      "pydantic": "2.13.5",
+      "all_distributions": [
+        {
+          "name": "accelerate",
+          "version": "1.15.0"
+        },
+        {
+          "name": "alembic",
+          "version": "1.20.0"
+        },
+        {
+          "name": "annotated-doc",
+          "version": "0.0.5"
+        },
+        {
+          "name": "annotated-types",
+          "version": "0.8.0"
+        },
+        {
+          "name": "antlr4-python3-runtime",
+          "version": "4.9.3"
+        },
+        {
+          "name": "anyio",
+          "version": "4.15.1"
+        },
+        {
+          "name": "asyncpg",
+          "version": "0.31.0"
+        },
+        {
+          "name": "attrs",
+          "version": "26.1.0"
+        },
+        {
+          "name": "beautifulsoup4",
+          "version": "4.15.0"
+        },
+        {
+          "name": "certifi",
+          "version": "2026.7.22"
+        },
+        {
+          "name": "cffi",
+          "version": "2.1.1"
+        },
+        {
+          "name": "charset-normalizer",
+          "version": "3.5.2"
+        },
+        {
+          "name": "click",
+          "version": "8.5.0"
+        },
+        {
+          "name": "cloudpickle",
+          "version": "3.1.2"
+        },
+        {
+          "name": "colorlog",
+          "version": "6.12.0"
+        },
+        {
+          "name": "cryptography",
+          "version": "50.0.2"
+        },
+        {
+          "name": "defusedxml",
+          "version": "0.7.1"
+        },
+        {
+          "name": "dill",
+          "version": "0.4.1"
+        },
+        {
+          "name": "distro",
+          "version": "1.9.0"
+        },
+        {
+          "name": "doclang",
+          "version": "0.7.3"
+        },
+        {
+          "name": "docling",
+          "version": "2.132.0"
+        },
+        {
+          "name": "docling-core",
+          "version": "2.99.0"
+        },
+        {
+          "name": "docling-ibm-models",
+          "version": "4.0.3"
+        },
+        {
+          "name": "docling-parse",
+          "version": "7.22.1"
+        },
+        {
+          "name": "docling-slim",
+          "version": "2.132.0"
+        },
+        {
+          "name": "et_xmlfile",
+          "version": "2.0.0"
+        },
+        {
+          "name": "Faker",
+          "version": "40.40.0"
+        },
+        {
+          "name": "fastapi",
+          "version": "0.142.2"
+        },
+        {
+          "name": "filelock",
+          "version": "4.0.8"
+        },
+        {
+          "name": "filetype",
+          "version": "1.2.0"
+        },
+        {
+          "name": "fsspec",
+          "version": "2026.9.0"
+        },
+        {
+          "name": "googleapis-common-protos",
+          "version": "1.75.5"
+        },
+        {
+          "name": "greenlet",
+          "version": "3.5.6"
+        },
+        {
+          "name": "grpcio",
+          "version": "1.84.0"
+        },
+        {
+          "name": "h11",
+          "version": "0.16.0"
+        },
+        {
+          "name": "h2",
+          "version": "4.4.1"
+        },
+        {
+          "name": "hf-xet",
+          "version": "1.6.0"
+        },
+        {
+          "name": "hpack",
+          "version": "4.2.0"
+        },
+        {
+          "name": "httpcore",
+          "version": "1.0.9"
+        },
+        {
+          "name": "httpcore2",
+          "version": "2.13.1"
+        },
+        {
+          "name": "httptools",
+          "version": "0.8.0"
+        },
+        {
+          "name": "httpx",
+          "version": "0.28.1"
+        },
+        {
+          "name": "httpx2",
+          "version": "2.13.1"
+        },
+        {
+          "name": "huggingface_hub",
+          "version": "1.33.0"
+        },
+        {
+          "name": "hyperframe",
+          "version": "6.1.0"
+        },
+        {
+          "name": "idna",
+          "version": "3.20"
+        },
+        {
+          "name": "it-operations-agent-api",
+          "version": "0.1.0"
+        },
+        {
+          "name": "Jinja2",
+          "version": "3.1.6"
+        },
+        {
+          "name": "jiter",
+          "version": "0.17.0"
+        },
+        {
+          "name": "joblib",
+          "version": "1.6.0"
+        },
+        {
+          "name": "jsonpatch",
+          "version": "1.33"
+        },
+        {
+          "name": "jsonpointer",
+          "version": "3.1.1"
+        },
+        {
+          "name": "jsonref",
+          "version": "1.1.0"
+        },
+        {
+          "name": "jsonschema",
+          "version": "4.26.0"
+        },
+        {
+          "name": "jsonschema-specifications",
+          "version": "2025.9.1"
+        },
+        {
+          "name": "langchain-core",
+          "version": "1.6.6"
+        },
+        {
+          "name": "langchain-protocol",
+          "version": "0.0.19"
+        },
+        {
+          "name": "langcodes",
+          "version": "3.5.1"
+        },
+        {
+          "name": "langgraph",
+          "version": "1.2.12"
+        },
+        {
+          "name": "langgraph-checkpoint",
+          "version": "4.2.0"
+        },
+        {
+          "name": "langgraph-prebuilt",
+          "version": "1.1.0"
+        },
+        {
+          "name": "langgraph-sdk",
+          "version": "0.4.5"
+        },
+        {
+          "name": "langsmith",
+          "version": "0.14.2"
+        },
+        {
+          "name": "latex2mathml",
+          "version": "3.81.1"
+        },
+        {
+          "name": "lxml",
+          "version": "6.1.3"
+        },
+        {
+          "name": "mail-parser",
+          "version": "4.8.0"
+        },
+        {
+          "name": "Mako",
+          "version": "1.4.3"
+        },
+        {
+          "name": "markdown-it-py",
+          "version": "4.2.0"
+        },
+        {
+          "name": "marko",
+          "version": "2.2.4"
+        },
+        {
+          "name": "MarkupSafe",
+          "version": "3.0.3"
+        },
+        {
+          "name": "mdurl",
+          "version": "0.1.2"
+        },
+        {
+          "name": "mpire",
+          "version": "2.10.2"
+        },
+        {
+          "name": "mpmath",
+          "version": "1.3.0"
+        },
+        {
+          "name": "multiprocess",
+          "version": "0.70.19"
+        },
+        {
+          "name": "narwhals",
+          "version": "2.26.0"
+        },
+        {
+          "name": "networkx",
+          "version": "3.6.1"
+        },
+        {
+          "name": "numpy",
+          "version": "2.4.6"
+        },
+        {
+          "name": "olefile",
+          "version": "0.47"
+        },
+        {
+          "name": "omegaconf",
+          "version": "2.3.1"
+        },
+        {
+          "name": "openai",
+          "version": "2.54.0"
+        },
+        {
+          "name": "opencv-python",
+          "version": "5.0.0.93"
+        },
+        {
+          "name": "openpyxl",
+          "version": "3.1.5"
+        },
+        {
+          "name": "opentelemetry-api",
+          "version": "1.45.0"
+        },
+        {
+          "name": "opentelemetry-exporter-http-transport",
+          "version": "0.66b0"
+        },
+        {
+          "name": "opentelemetry-exporter-otlp-common",
+          "version": "0.66b0"
+        },
+        {
+          "name": "opentelemetry-exporter-otlp-proto-common",
+          "version": "1.45.0"
+        },
+        {
+          "name": "opentelemetry-exporter-otlp-proto-http",
+          "version": "1.45.0"
+        },
+        {
+          "name": "opentelemetry-proto",
+          "version": "1.45.0"
+        },
+        {
+          "name": "opentelemetry-sdk",
+          "version": "1.45.0"
+        },
+        {
+          "name": "opentelemetry-semantic-conventions",
+          "version": "0.66b0"
+        },
+        {
+          "name": "orjson",
+          "version": "3.12.0"
+        },
+        {
+          "name": "ormsgpack",
+          "version": "1.12.2"
+        },
+        {
+          "name": "packaging",
+          "version": "26.3"
+        },
+        {
+          "name": "pandas",
+          "version": "3.0.6"
+        },
+        {
+          "name": "pillow",
+          "version": "12.3.0"
+        },
+        {
+          "name": "pluggy",
+          "version": "1.6.0"
+        },
+        {
+          "name": "polyfactory",
+          "version": "3.3.0"
+        },
+        {
+          "name": "portalocker",
+          "version": "3.2.0"
+        },
+        {
+          "name": "prometheus_client",
+          "version": "0.26.0"
+        },
+        {
+          "name": "protobuf",
+          "version": "7.36.2"
+        },
+        {
+          "name": "psutil",
+          "version": "7.2.2"
+        },
+        {
+          "name": "pyclipper",
+          "version": "1.4.0"
+        },
+        {
+          "name": "pycparser",
+          "version": "3.0"
+        },
+        {
+          "name": "pydantic",
+          "version": "2.13.5"
+        },
+        {
+          "name": "pydantic-settings",
+          "version": "2.15.0"
+        },
+        {
+          "name": "pydantic_core",
+          "version": "2.46.5"
+        },
+        {
+          "name": "Pygments",
+          "version": "2.21.0"
+        },
+        {
+          "name": "PyJWT",
+          "version": "2.15.1"
+        },
+        {
+          "name": "pylatexenc",
+          "version": "2.11"
+        },
+        {
+          "name": "pymupdf",
+          "version": "1.28.2"
+        },
+        {
+          "name": "pypdfium2",
+          "version": "5.13.0"
+        },
+        {
+          "name": "python-dateutil",
+          "version": "2.9.0.post0"
+        },
+        {
+          "name": "python-docx",
+          "version": "1.2.0"
+        },
+        {
+          "name": "python-dotenv",
+          "version": "1.2.4"
+        },
+        {
+          "name": "python-multipart",
+          "version": "0.0.32"
+        },
+        {
+          "name": "python-oxmsg",
+          "version": "0.0.2"
+        },
+        {
+          "name": "python-pptx",
+          "version": "1.0.2"
+        },
+        {
+          "name": "PyYAML",
+          "version": "6.0.3"
+        },
+        {
+          "name": "qdrant-client",
+          "version": "1.16.2"
+        },
+        {
+          "name": "rank-bm25",
+          "version": "0.2.2"
+        },
+        {
+          "name": "rapidocr",
+          "version": "3.9.2"
+        },
+        {
+          "name": "redis",
+          "version": "6.4.0"
+        },
+        {
+          "name": "referencing",
+          "version": "0.37.0"
+        },
+        {
+          "name": "regex",
+          "version": "2026.9.29"
+        },
+        {
+          "name": "requests",
+          "version": "2.34.2"
+        },
+        {
+          "name": "requests-toolbelt",
+          "version": "1.0.0"
+        },
+        {
+          "name": "rich",
+          "version": "15.0.0"
+        },
+        {
+          "name": "rpds-py",
+          "version": "2026.6.3"
+        },
+        {
+          "name": "rtree",
+          "version": "1.4.1"
+        },
+        {
+          "name": "safetensors",
+          "version": "0.8.0"
+        },
+        {
+          "name": "scikit-learn",
+          "version": "1.9.1"
+        },
+        {
+          "name": "scipy",
+          "version": "1.17.1"
+        },
+        {
+          "name": "semchunk",
+          "version": "3.2.5"
+        },
+        {
+          "name": "sentence-transformers",
+          "version": "5.7.0"
+        },
+        {
+          "name": "setuptools",
+          "version": "84.0.0"
+        },
+        {
+          "name": "shapely",
+          "version": "2.1.2"
+        },
+        {
+          "name": "shellingham",
+          "version": "1.5.4"
+        },
+        {
+          "name": "six",
+          "version": "1.17.0"
+        },
+        {
+          "name": "sniffio",
+          "version": "1.3.1"
+        },
+        {
+          "name": "soupsieve",
+          "version": "2.10"
+        },
+        {
+          "name": "SQLAlchemy",
+          "version": "2.1.1"
+        },
+        {
+          "name": "starlette",
+          "version": "1.7.0"
+        },
+        {
+          "name": "sympy",
+          "version": "1.14.0"
+        },
+        {
+          "name": "tabulate",
+          "version": "0.10.0"
+        },
+        {
+          "name": "tenacity",
+          "version": "9.1.4"
+        },
+        {
+          "name": "threadpoolctl",
+          "version": "3.7.0"
+        },
+        {
+          "name": "tokenizers",
+          "version": "0.23.2"
+        },
+        {
+          "name": "torch",
+          "version": "2.14.1+cpu"
+        },
+        {
+          "name": "torchvision",
+          "version": "0.29.1+cpu"
+        },
+        {
+          "name": "tqdm",
+          "version": "4.70.1"
+        },
+        {
+          "name": "transformers",
+          "version": "5.18.0"
+        },
+        {
+          "name": "tree-sitter",
+          "version": "0.26.0"
+        },
+        {
+          "name": "tree-sitter-c",
+          "version": "0.24.2"
+        },
+        {
+          "name": "tree-sitter-javascript",
+          "version": "0.25.0"
+        },
+        {
+          "name": "tree-sitter-python",
+          "version": "0.25.0"
+        },
+        {
+          "name": "tree-sitter-typescript",
+          "version": "0.23.2"
+        },
+        {
+          "name": "truststore",
+          "version": "0.10.4"
+        },
+        {
+          "name": "typer",
+          "version": "0.26.8"
+        },
+        {
+          "name": "typing-inspection",
+          "version": "0.4.4"
+        },
+        {
+          "name": "typing_extensions",
+          "version": "4.16.0"
+        },
+        {
+          "name": "urllib3",
+          "version": "2.8.0"
+        },
+        {
+          "name": "uuid_utils",
+          "version": "0.17.1"
+        },
+        {
+          "name": "uvicorn",
+          "version": "0.54.0"
+        },
+        {
+          "name": "uvloop",
+          "version": "0.23.0"
+        },
+        {
+          "name": "watchfiles",
+          "version": "1.3.0"
+        },
+        {
+          "name": "websockets",
+          "version": "16.1.1"
+        },
+        {
+          "name": "xlsxwriter",
+          "version": "3.2.9"
+        },
+        {
+          "name": "xxhash",
+          "version": "4.0.1"
+        },
+        {
+          "name": "zstandard",
+          "version": "0.25.0"
+        }
+      ]
+    },
+    "candidate_pipeline_class": "StandardPdfPipeline",
+    "candidate_pipeline_options": {
+      "document_timeout": 120.0,
+      "accelerator_options": {
+        "num_threads": 2,
+        "device": "cpu",
+        "cuda_use_flash_attention2": false
+      },
+      "enable_remote_services": false,
+      "allow_external_plugins": false,
+      "artifacts_path": "/models",
+      "do_picture_classification": false,
+      "picture_classification_options": {
+        "engine_options": {
+          "engine_type": "transformers",
+          "top_k": null
+        },
+        "model_spec": {
+          "name": "document_figure_classifier_v2",
+          "repo_id": "docling-project/DocumentFigureClassifier-v2.5",
+          "revision": "main",
+          "engine_overrides": {}
+        }
+      },
+      "do_picture_description": false,
+      "picture_description_options": {
+        "batch_size": 8,
+        "scale": 2.0,
+        "picture_area_threshold": 0.05,
+        "classification_allow": null,
+        "classification_deny": null,
+        "classification_min_confidence": 0.0
+      },
+      "do_chart_extraction": false,
+      "chart_extraction_options": {
+        "engine_options": {
+          "engine_type": "transformers",
+          "device": null,
+          "load_in_8bit": true,
+          "llm_int8_threshold": 6.0,
+          "quantized": false,
+          "torch_dtype": null,
+          "trust_remote_code": true,
+          "use_kv_cache": true,
+          "compile_model": false
+        },
+        "model_spec": {
+          "name": "Granite-Vision-4.1-4B",
+          "default_repo_id": "ibm-granite/granite-vision-4.1-4b",
+          "revision": "dd48e97503de471803850df70843cf9eb5da8712",
+          "prompt": "<chart2csv>",
+          "response_format": "plaintext",
+          "supported_engines": [
+            "api_ollama",
+            "api_lmstudio",
+            "api_openai",
+            "transformers"
+          ],
+          "engine_overrides": {
+            "transformers": {
+              "repo_id": null,
+              "revision": null,
+              "torch_dtype": "bfloat16",
+              "min_engine_version": null,
+              "extra_config": {
+                "transformers_model_type": "automodel-imagetexttotext"
+              }
+            }
+          },
+          "api_overrides": {
+            "api_lmstudio": {
+              "params": {
+                "model": "granite-vision-4.1-4b"
+              }
+            },
+            "api_ollama": {
+              "params": {
+                "model": "granite-vision-4.1-4b"
+              }
+            },
+            "api_openai": {
+              "params": {
+                "model": "granite-vision-4.1-4b"
+              }
+            }
+          },
+          "trust_remote_code": true,
+          "stop_strings": [],
+          "temperature": 0.0,
+          "max_new_tokens": 4096,
+          "extra_generation_config": {}
+        },
+        "chart2csv": true,
+        "chart2summary": false,
+        "chart2code": false,
+        "output_format": "granite_vision_charts",
+        "use_natural_language_prompts": false
+      },
+      "images_scale": 1.0,
+      "generate_page_images": false,
+      "generate_picture_images": false,
+      "do_table_structure": true,
+      "do_ocr": false,
+      "do_code_enrichment": false,
+      "do_formula_enrichment": false,
+      "force_backend_text": false,
+      "table_structure_options": {},
+      "ocr_options": {
+        "mode": "default",
+        "lang": [],
+        "scale": 3.0,
+        "force_full_page_ocr": false
+      },
+      "layout_options": {
+        "keep_empty_clusters": false,
+        "skip_cell_assignment": false,
+        "create_orphan_clusters": true
+      },
+      "code_formula_options": {
+        "engine_options": {
+          "engine_type": "auto_inline",
+          "prefer_vllm": false
+        },
+        "model_spec": {
+          "name": "CodeFormulaV2",
+          "default_repo_id": "docling-project/CodeFormulaV2",
+          "revision": "main",
+          "prompt": "",
+          "response_format": "plaintext",
+          "supported_engines": null,
+          "engine_overrides": {
+            "transformers": {
+              "repo_id": null,
+              "revision": null,
+              "torch_dtype": null,
+              "min_engine_version": null,
+              "extra_config": {
+                "transformers_model_type": "automodel-imagetexttotext",
+                "extra_generation_config": {
+                  "skip_special_tokens": false
+                },
+                "torch_dtype": "bfloat16"
+              }
+            }
+          },
+          "api_overrides": {},
+          "trust_remote_code": false,
+          "stop_strings": [
+            "</doctag>",
+            "<end_of_utterance>"
+          ],
+          "temperature": 0.0,
+          "max_new_tokens": 4096,
+          "extra_generation_config": {}
+        },
+        "scale": 2.0,
+        "max_size": null,
+        "extract_code": true,
+        "extract_formulas": true
+      },
+      "generate_table_images": false,
+      "generate_parsed_pages": false,
+      "use_reading_order_separators": true,
+      "heading_hierarchy_options": {
+        "enabled": false,
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "numbering_schemes": null,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "ocr_batch_size": 4,
+      "layout_batch_size": 4,
+      "table_batch_size": 4,
+      "batch_polling_interval_seconds": 0.5,
+      "queue_max_size": 100,
+      "stage_shutdown_timeout_seconds": 15.0
+    },
+    "candidate_final_rss": {
+      "current_rss_bytes": 1309048832,
+      "process_peak_rss_bytes": 1508581376
+    },
+    "candidate_final_cgroup": {
+      "cpu.max": "200000 100000",
+      "memory.max": "4294967296",
+      "memory.peak": "1356242944",
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0"
+    },
+    "candidate_converter_automatic_rejections": 0,
+    "manual_compatibility_assessment_not_runtime_gate": true,
+    "cases": [
+      {
+        "name": "ruled-table",
+        "input_sha256": "8437870e228216acd023719ee135116d39e4562dfa198b2209353d25b25160b8",
+        "fixture_contract_expected": "accepted",
+        "baseline_status": "accepted",
+        "baseline_api_seconds": [
+          0.13902894400007426,
+          0.1042816130002393,
+          0.10603268299973934
+        ],
+        "baseline_api_median_seconds": 0.10603268299973934,
+        "candidate_statuses": [
+          "success",
+          "success",
+          "success",
+          "success"
+        ],
+        "candidate_setup_seconds": 7.783740533999662,
+        "candidate_warm_seconds": [
+          1.5249492410002858,
+          1.513804951000111,
+          1.5551451870001074
+        ],
+        "candidate_warm_median_seconds": 1.5249492410002858,
+        "candidate_fixture_assessment": {
+          "api_status": "success",
+          "pages": {
+            "1": {
+              "size": {
+                "width": 595.0,
+                "height": 842.0
+              },
+              "image": null,
+              "page_no": 1
+            }
+          },
+          "tables": [
+            {
+              "self_ref": "#/tables/0",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "table",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 43.84629440307617,
+                    "t": 732.9256286621094,
+                    "r": 550.8744506835938,
+                    "b": 650.1722717285156,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    0
+                  ]
+                }
+              ],
+              "captions": [],
+              "references": [],
+              "footnotes": [],
+              "image": null,
+              "data": {
+                "table_cells": [
+                  {
+                    "bbox": {
+                      "l": 50.0,
+                      "t": 119.0,
+                      "r": 86.0,
+                      "b": 129.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 0,
+                    "end_row_offset_idx": 1,
+                    "start_col_offset_idx": 0,
+                    "end_col_offset_idx": 1,
+                    "text": "服务等级",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 180.0,
+                      "t": 119.0,
+                      "r": 252.0,
+                      "b": 129.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 0,
+                    "end_row_offset_idx": 1,
+                    "start_col_offset_idx": 1,
+                    "end_col_offset_idx": 2,
+                    "text": "响应时间（分钟）",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 345.0,
+                      "t": 119.0,
+                      "r": 381.0,
+                      "b": 129.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 0,
+                    "end_row_offset_idx": 1,
+                    "start_col_offset_idx": 2,
+                    "end_col_offset_idx": 3,
+                    "text": "适用范围",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 50.0,
+                      "t": 146.0,
+                      "r": 68.0,
+                      "b": 156.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 1,
+                    "end_row_offset_idx": 2,
+                    "start_col_offset_idx": 0,
+                    "end_col_offset_idx": 1,
+                    "text": "普通",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 180.0,
+                      "t": 146.0,
+                      "r": 207.0,
+                      "b": 156.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 1,
+                    "end_row_offset_idx": 2,
+                    "start_col_offset_idx": 1,
+                    "end_col_offset_idx": 2,
+                    "text": "240",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 345.0,
+                      "t": 146.0,
+                      "r": 381.0,
+                      "b": 156.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 1,
+                    "end_row_offset_idx": 2,
+                    "start_col_offset_idx": 2,
+                    "end_col_offset_idx": 3,
+                    "text": "一般问题",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 50.0,
+                      "t": 173.0,
+                      "r": 68.0,
+                      "b": 183.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 2,
+                    "end_row_offset_idx": 3,
+                    "start_col_offset_idx": 0,
+                    "end_col_offset_idx": 1,
+                    "text": "紧急",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 180.0,
+                      "t": 173.0,
+                      "r": 198.0,
+                      "b": 183.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 2,
+                    "end_row_offset_idx": 3,
+                    "start_col_offset_idx": 1,
+                    "end_col_offset_idx": 2,
+                    "text": "15",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 345.0,
+                      "t": 173.0,
+                      "r": 381.0,
+                      "b": 183.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 2,
+                    "end_row_offset_idx": 3,
+                    "start_col_offset_idx": 2,
+                    "end_col_offset_idx": 3,
+                    "text": "业务中断",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  }
+                ],
+                "num_rows": 3,
+                "num_cols": 3,
+                "orientation": "rot_0",
+                "grid": [
+                  [
+                    {
+                      "bbox": {
+                        "l": 50.0,
+                        "t": 119.0,
+                        "r": 86.0,
+                        "b": 129.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 0,
+                      "end_row_offset_idx": 1,
+                      "start_col_offset_idx": 0,
+                      "end_col_offset_idx": 1,
+                      "text": "服务等级",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 180.0,
+                        "t": 119.0,
+                        "r": 252.0,
+                        "b": 129.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 0,
+                      "end_row_offset_idx": 1,
+                      "start_col_offset_idx": 1,
+                      "end_col_offset_idx": 2,
+                      "text": "响应时间（分钟）",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 345.0,
+                        "t": 119.0,
+                        "r": 381.0,
+                        "b": 129.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 0,
+                      "end_row_offset_idx": 1,
+                      "start_col_offset_idx": 2,
+                      "end_col_offset_idx": 3,
+                      "text": "适用范围",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    }
+                  ],
+                  [
+                    {
+                      "bbox": {
+                        "l": 50.0,
+                        "t": 146.0,
+                        "r": 68.0,
+                        "b": 156.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 1,
+                      "end_row_offset_idx": 2,
+                      "start_col_offset_idx": 0,
+                      "end_col_offset_idx": 1,
+                      "text": "普通",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 180.0,
+                        "t": 146.0,
+                        "r": 207.0,
+                        "b": 156.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 1,
+                      "end_row_offset_idx": 2,
+                      "start_col_offset_idx": 1,
+                      "end_col_offset_idx": 2,
+                      "text": "240",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 345.0,
+                        "t": 146.0,
+                        "r": 381.0,
+                        "b": 156.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 1,
+                      "end_row_offset_idx": 2,
+                      "start_col_offset_idx": 2,
+                      "end_col_offset_idx": 3,
+                      "text": "一般问题",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    }
+                  ],
+                  [
+                    {
+                      "bbox": {
+                        "l": 50.0,
+                        "t": 173.0,
+                        "r": 68.0,
+                        "b": 183.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 2,
+                      "end_row_offset_idx": 3,
+                      "start_col_offset_idx": 0,
+                      "end_col_offset_idx": 1,
+                      "text": "紧急",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 180.0,
+                        "t": 173.0,
+                        "r": 198.0,
+                        "b": 183.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 2,
+                      "end_row_offset_idx": 3,
+                      "start_col_offset_idx": 1,
+                      "end_col_offset_idx": 2,
+                      "text": "15",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 345.0,
+                        "t": 173.0,
+                        "r": 381.0,
+                        "b": 183.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 2,
+                      "end_row_offset_idx": 3,
+                      "start_col_offset_idx": 2,
+                      "end_col_offset_idx": 3,
+                      "text": "业务中断",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    }
+                  ]
+                ]
+              },
+              "annotations": []
+            }
+          ],
+          "texts": [
+            {
+              "self_ref": "#/texts/0",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "section_header",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 45.0,
+                    "t": 797.0,
+                    "r": 345.0,
+                    "b": 785.0,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    30
+                  ]
+                }
+              ],
+              "orig": "服务响应规范。适用条件：工作日。注：响应时间不等于解决时间。",
+              "text": "服务响应规范。适用条件：工作日。注：响应时间不等于解决时间。",
+              "formatting": null,
+              "hyperlink": null,
+              "level": 1
+            }
+          ],
+          "cell_count": 9,
+          "cells_with_bbox": 9,
+          "cell_texts": [
+            "服务等级",
+            "响应时间（分钟）",
+            "适用范围",
+            "普通",
+            "240",
+            "一般问题",
+            "紧急",
+            "15",
+            "业务中断"
+          ],
+          "header_flagged_texts": [],
+          "unit_literal_present": true,
+          "condition_literal_present": true,
+          "footnote_literal_present": true,
+          "within_baseline_supported_contract": true,
+          "known_source_geometry_comparison": {
+            "source_grid_x": [
+              45,
+              175,
+              340,
+              550
+            ],
+            "source_grid_y": [
+              110,
+              137,
+              164,
+              191
+            ],
+            "source_page_height": 842,
+            "tolerance_points": 2,
+            "cell_checks": [
+              {
+                "text": "服务等级",
+                "row": 0,
+                "col": 0,
+                "actual_bbox": {
+                  "l": 50.0,
+                  "t": 119.0,
+                  "r": 86.0,
+                  "b": 129.79999999999995,
+                  "coord_origin": "TOPLEFT"
+                },
+                "actual_bbox_as_top_left": [
+                  50.0,
+                  119.0,
+                  86.0,
+                  129.79999999999995
+                ],
+                "inside_known_synthetic_cell_with_2pt_tolerance": true
+              },
+              {
+                "text": "响应时间（分钟）",
+                "row": 0,
+                "col": 1,
+                "actual_bbox": {
+                  "l": 180.0,
+                  "t": 119.0,
+                  "r": 252.0,
+                  "b": 129.79999999999995,
+                  "coord_origin": "TOPLEFT"
+                },
+                "actual_bbox_as_top_left": [
+                  180.0,
+                  119.0,
+                  252.0,
+                  129.79999999999995
+                ],
+                "inside_known_synthetic_cell_with_2pt_tolerance": true
+              },
+              {
+                "text": "适用范围",
+                "row": 0,
+                "col": 2,
+                "actual_bbox": {
+                  "l": 345.0,
+                  "t": 119.0,
+                  "r": 381.0,
+                  "b": 129.79999999999995,
+                  "coord_origin": "TOPLEFT"
+                },
+                "actual_bbox_as_top_left": [
+                  345.0,
+                  119.0,
+                  381.0,
+                  129.79999999999995
+                ],
+                "inside_known_synthetic_cell_with_2pt_tolerance": true
+              },
+              {
+                "text": "普通",
+                "row": 1,
+                "col": 0,
+                "actual_bbox": {
+                  "l": 50.0,
+                  "t": 146.0,
+                  "r": 68.0,
+                  "b": 156.79999999999995,
+                  "coord_origin": "TOPLEFT"
+                },
+                "actual_bbox_as_top_left": [
+                  50.0,
+                  146.0,
+                  68.0,
+                  156.79999999999995
+                ],
+                "inside_known_synthetic_cell_with_2pt_tolerance": true
+              },
+              {
+                "text": "240",
+                "row": 1,
+                "col": 1,
+                "actual_bbox": {
+                  "l": 180.0,
+                  "t": 146.0,
+                  "r": 207.0,
+                  "b": 156.79999999999995,
+                  "coord_origin": "TOPLEFT"
+                },
+                "actual_bbox_as_top_left": [
+                  180.0,
+                  146.0,
+                  207.0,
+                  156.79999999999995
+                ],
+                "inside_known_synthetic_cell_with_2pt_tolerance": true
+              },
+              {
+                "text": "一般问题",
+                "row": 1,
+                "col": 2,
+                "actual_bbox": {
+                  "l": 345.0,
+                  "t": 146.0,
+                  "r": 381.0,
+                  "b": 156.79999999999995,
+                  "coord_origin": "TOPLEFT"
+                },
+                "actual_bbox_as_top_left": [
+                  345.0,
+                  146.0,
+                  381.0,
+                  156.79999999999995
+                ],
+                "inside_known_synthetic_cell_with_2pt_tolerance": true
+              },
+              {
+                "text": "紧急",
+                "row": 2,
+                "col": 0,
+                "actual_bbox": {
+                  "l": 50.0,
+                  "t": 173.0,
+                  "r": 68.0,
+                  "b": 183.79999999999995,
+                  "coord_origin": "TOPLEFT"
+                },
+                "actual_bbox_as_top_left": [
+                  50.0,
+                  173.0,
+                  68.0,
+                  183.79999999999995
+                ],
+                "inside_known_synthetic_cell_with_2pt_tolerance": true
+              },
+              {
+                "text": "15",
+                "row": 2,
+                "col": 1,
+                "actual_bbox": {
+                  "l": 180.0,
+                  "t": 173.0,
+                  "r": 198.0,
+                  "b": 183.79999999999995,
+                  "coord_origin": "TOPLEFT"
+                },
+                "actual_bbox_as_top_left": [
+                  180.0,
+                  173.0,
+                  198.0,
+                  183.79999999999995
+                ],
+                "inside_known_synthetic_cell_with_2pt_tolerance": true
+              },
+              {
+                "text": "业务中断",
+                "row": 2,
+                "col": 2,
+                "actual_bbox": {
+                  "l": 345.0,
+                  "t": 173.0,
+                  "r": 381.0,
+                  "b": 183.79999999999995,
+                  "coord_origin": "TOPLEFT"
+                },
+                "actual_bbox_as_top_left": [
+                  345.0,
+                  173.0,
+                  381.0,
+                  183.79999999999995
+                ],
+                "inside_known_synthetic_cell_with_2pt_tolerance": true
+              }
+            ],
+            "all_cells_inside": true
+          },
+          "synthetic_structure_checks": {
+            "exactly_one_3x3_table": true,
+            "nine_exact_cell_texts": true,
+            "row_col_relationships_exact": true,
+            "exact_column_headers": false,
+            "all_real_cell_bboxes_present": true,
+            "table_page_and_bbox": true,
+            "condition_preserved": true,
+            "footnote_preserved": true,
+            "bbox_inside_corresponding_source_cell": true
+          },
+          "quality_pass": false,
+          "boundary_disposition": "synthetic_checks_failed",
+          "automatic_business_acceptance": false
+        },
+        "assessment_is_not_automatic_production_rejection": true
+      },
+      {
+        "name": "prose",
+        "input_sha256": "7912992f620534c9a071dbb2e454b82bc525efd7f440083d2ec60e96f0882c21",
+        "fixture_contract_expected": "accepted",
+        "baseline_status": "accepted",
+        "baseline_api_seconds": [
+          0.0340980450000643,
+          0.03301236700008303,
+          0.07610866400000305
+        ],
+        "baseline_api_median_seconds": 0.0340980450000643,
+        "candidate_statuses": [
+          "success",
+          "success",
+          "success",
+          "success"
+        ],
+        "candidate_setup_seconds": 0.8371605939996698,
+        "candidate_warm_seconds": [
+          0.8387885679999272,
+          0.7869126270002198,
+          0.8445905680000578
+        ],
+        "candidate_warm_median_seconds": 0.8387885679999272,
+        "candidate_fixture_assessment": {
+          "api_status": "success",
+          "pages": {
+            "1": {
+              "size": {
+                "width": 595.0,
+                "height": 842.0
+              },
+              "image": null,
+              "page_no": 1
+            }
+          },
+          "tables": [],
+          "texts": [
+            {
+              "self_ref": "#/texts/0",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "text",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 45.0,
+                    "t": 759.898,
+                    "r": 343.98,
+                    "b": 677.723,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    293
+                  ]
+                }
+              ],
+              "orig": "The team reviews each request before a change is approved. The team verifies each request before a change is approved. The team records each request before a change is approved. The team closes each request before a change is approved. The team audits each request before a change is approved.",
+              "text": "The team reviews each request before a change is approved. The team verifies each request before a change is approved. The team records each request before a change is approved. The team closes each request before a change is approved. The team audits each request before a change is approved.",
+              "formatting": null,
+              "hyperlink": null
+            }
+          ],
+          "cell_count": 0,
+          "cells_with_bbox": 0,
+          "cell_texts": [],
+          "header_flagged_texts": [],
+          "unit_literal_present": false,
+          "condition_literal_present": false,
+          "footnote_literal_present": false,
+          "within_baseline_supported_contract": true,
+          "synthetic_structure_checks": {
+            "all_five_sentences": true,
+            "no_false_table": true,
+            "all_text_items_have_page_bbox": true
+          },
+          "quality_pass": true,
+          "boundary_disposition": "synthetic_checks_pass_manual_bbox_review_pending",
+          "automatic_business_acceptance": false
+        },
+        "assessment_is_not_automatic_production_rejection": true
+      },
+      {
+        "name": "merged",
+        "input_sha256": "d2507fcfb15a71a9e8fbbbca67f918fce984fe53ca9851f5c27df2de939a2210",
+        "fixture_contract_expected": "rejected",
+        "baseline_status": "rejected",
+        "baseline_api_seconds": [
+          0.13418535099981455,
+          0.10846581899977537,
+          0.08202638900002057
+        ],
+        "baseline_api_median_seconds": 0.10846581899977537,
+        "candidate_statuses": [
+          "success",
+          "success",
+          "success",
+          "success"
+        ],
+        "candidate_setup_seconds": 1.5725809529999424,
+        "candidate_warm_seconds": [
+          1.5962246369999775,
+          1.5451361189998352,
+          1.5058050509996974
+        ],
+        "candidate_warm_median_seconds": 1.5451361189998352,
+        "candidate_fixture_assessment": {
+          "api_status": "success",
+          "pages": {
+            "1": {
+              "size": {
+                "width": 595.0,
+                "height": 842.0
+              },
+              "image": null,
+              "page_no": 1
+            }
+          },
+          "tables": [
+            {
+              "self_ref": "#/tables/0",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "table",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 43.9604377746582,
+                    "t": 732.857536315918,
+                    "r": 550.8771362304688,
+                    "b": 650.1393432617188,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    0
+                  ]
+                }
+              ],
+              "captions": [],
+              "references": [],
+              "footnotes": [],
+              "image": null,
+              "data": {
+                "table_cells": [
+                  {
+                    "bbox": {
+                      "l": 50.0,
+                      "t": 119.0,
+                      "r": 86.0,
+                      "b": 129.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 0,
+                    "end_row_offset_idx": 1,
+                    "start_col_offset_idx": 0,
+                    "end_col_offset_idx": 1,
+                    "text": "服务等级",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 180.0,
+                      "t": 119.0,
+                      "r": 252.0,
+                      "b": 129.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 0,
+                    "end_row_offset_idx": 1,
+                    "start_col_offset_idx": 1,
+                    "end_col_offset_idx": 2,
+                    "text": "响应时间（分钟）",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 345.0,
+                      "t": 119.0,
+                      "r": 381.0,
+                      "b": 129.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 0,
+                    "end_row_offset_idx": 1,
+                    "start_col_offset_idx": 2,
+                    "end_col_offset_idx": 3,
+                    "text": "适用范围",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 50.0,
+                      "t": 146.0,
+                      "r": 68.0,
+                      "b": 156.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 1,
+                    "end_row_offset_idx": 2,
+                    "start_col_offset_idx": 0,
+                    "end_col_offset_idx": 1,
+                    "text": "普通",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 180.0,
+                      "t": 146.0,
+                      "r": 207.0,
+                      "b": 156.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 1,
+                    "end_row_offset_idx": 2,
+                    "start_col_offset_idx": 1,
+                    "end_col_offset_idx": 2,
+                    "text": "240",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 345.0,
+                      "t": 146.0,
+                      "r": 381.0,
+                      "b": 156.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 1,
+                    "end_row_offset_idx": 2,
+                    "start_col_offset_idx": 2,
+                    "end_col_offset_idx": 3,
+                    "text": "一般问题",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 50.0,
+                      "t": 173.0,
+                      "r": 68.0,
+                      "b": 183.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 2,
+                    "end_row_offset_idx": 3,
+                    "start_col_offset_idx": 0,
+                    "end_col_offset_idx": 1,
+                    "text": "紧急",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 180.0,
+                      "t": 173.0,
+                      "r": 198.0,
+                      "b": 183.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 2,
+                    "end_row_offset_idx": 3,
+                    "start_col_offset_idx": 1,
+                    "end_col_offset_idx": 2,
+                    "text": "15",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 345.0,
+                      "t": 173.0,
+                      "r": 381.0,
+                      "b": 183.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 2,
+                    "end_row_offset_idx": 3,
+                    "start_col_offset_idx": 2,
+                    "end_col_offset_idx": 3,
+                    "text": "业务中断",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  }
+                ],
+                "num_rows": 3,
+                "num_cols": 3,
+                "orientation": "rot_0",
+                "grid": [
+                  [
+                    {
+                      "bbox": {
+                        "l": 50.0,
+                        "t": 119.0,
+                        "r": 86.0,
+                        "b": 129.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 0,
+                      "end_row_offset_idx": 1,
+                      "start_col_offset_idx": 0,
+                      "end_col_offset_idx": 1,
+                      "text": "服务等级",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 180.0,
+                        "t": 119.0,
+                        "r": 252.0,
+                        "b": 129.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 0,
+                      "end_row_offset_idx": 1,
+                      "start_col_offset_idx": 1,
+                      "end_col_offset_idx": 2,
+                      "text": "响应时间（分钟）",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 345.0,
+                        "t": 119.0,
+                        "r": 381.0,
+                        "b": 129.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 0,
+                      "end_row_offset_idx": 1,
+                      "start_col_offset_idx": 2,
+                      "end_col_offset_idx": 3,
+                      "text": "适用范围",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    }
+                  ],
+                  [
+                    {
+                      "bbox": {
+                        "l": 50.0,
+                        "t": 146.0,
+                        "r": 68.0,
+                        "b": 156.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 1,
+                      "end_row_offset_idx": 2,
+                      "start_col_offset_idx": 0,
+                      "end_col_offset_idx": 1,
+                      "text": "普通",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 180.0,
+                        "t": 146.0,
+                        "r": 207.0,
+                        "b": 156.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 1,
+                      "end_row_offset_idx": 2,
+                      "start_col_offset_idx": 1,
+                      "end_col_offset_idx": 2,
+                      "text": "240",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 345.0,
+                        "t": 146.0,
+                        "r": 381.0,
+                        "b": 156.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 1,
+                      "end_row_offset_idx": 2,
+                      "start_col_offset_idx": 2,
+                      "end_col_offset_idx": 3,
+                      "text": "一般问题",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    }
+                  ],
+                  [
+                    {
+                      "bbox": {
+                        "l": 50.0,
+                        "t": 173.0,
+                        "r": 68.0,
+                        "b": 183.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 2,
+                      "end_row_offset_idx": 3,
+                      "start_col_offset_idx": 0,
+                      "end_col_offset_idx": 1,
+                      "text": "紧急",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 180.0,
+                        "t": 173.0,
+                        "r": 198.0,
+                        "b": 183.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 2,
+                      "end_row_offset_idx": 3,
+                      "start_col_offset_idx": 1,
+                      "end_col_offset_idx": 2,
+                      "text": "15",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 345.0,
+                        "t": 173.0,
+                        "r": 381.0,
+                        "b": 183.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 2,
+                      "end_row_offset_idx": 3,
+                      "start_col_offset_idx": 2,
+                      "end_col_offset_idx": 3,
+                      "text": "业务中断",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    }
+                  ]
+                ]
+              },
+              "annotations": []
+            }
+          ],
+          "texts": [
+            {
+              "self_ref": "#/texts/0",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "section_header",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 45.0,
+                    "t": 797.0,
+                    "r": 345.0,
+                    "b": 785.0,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    30
+                  ]
+                }
+              ],
+              "orig": "服务响应规范。适用条件：工作日。注：响应时间不等于解决时间。",
+              "text": "服务响应规范。适用条件：工作日。注：响应时间不等于解决时间。",
+              "formatting": null,
+              "hyperlink": null,
+              "level": 1
+            }
+          ],
+          "cell_count": 9,
+          "cells_with_bbox": 9,
+          "cell_texts": [
+            "服务等级",
+            "响应时间（分钟）",
+            "适用范围",
+            "普通",
+            "240",
+            "一般问题",
+            "紧急",
+            "15",
+            "业务中断"
+          ],
+          "header_flagged_texts": [],
+          "unit_literal_present": true,
+          "condition_literal_present": true,
+          "footnote_literal_present": true,
+          "within_baseline_supported_contract": false,
+          "boundary_disposition": "api_success_outside_baseline_contract_requires_review",
+          "automatic_business_acceptance": false,
+          "quality_pass": null
+        },
+        "assessment_is_not_automatic_production_rejection": true
+      },
+      {
+        "name": "borderless",
+        "input_sha256": "a4087ecdb16e8a9e7332fe6ced32bf6b38c02374f9f914ed7be18ba6aaa70daf",
+        "fixture_contract_expected": "rejected",
+        "baseline_status": "rejected",
+        "baseline_api_seconds": [
+          0.04474989699974685,
+          0.03865719799978251,
+          0.03993489300000874
+        ],
+        "baseline_api_median_seconds": 0.03993489300000874,
+        "candidate_statuses": [
+          "success",
+          "success",
+          "success",
+          "success"
+        ],
+        "candidate_setup_seconds": 0.8534416300003613,
+        "candidate_warm_seconds": [
+          0.8390550510002868,
+          0.8443092890001935,
+          0.8309481880000931
+        ],
+        "candidate_warm_median_seconds": 0.8390550510002868,
+        "candidate_fixture_assessment": {
+          "api_status": "success",
+          "pages": {
+            "1": {
+              "size": {
+                "width": 595.0,
+                "height": 842.0
+              },
+              "image": null,
+              "page_no": 1
+            }
+          },
+          "tables": [],
+          "texts": [
+            {
+              "self_ref": "#/texts/0",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "section_header",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 45.0,
+                    "t": 797.0,
+                    "r": 345.0,
+                    "b": 785.0,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    30
+                  ]
+                }
+              ],
+              "orig": "服务响应规范。适用条件：工作日。注：响应时间不等于解决时间。",
+              "text": "服务响应规范。适用条件：工作日。注：响应时间不等于解决时间。",
+              "formatting": null,
+              "hyperlink": null,
+              "level": 1
+            },
+            {
+              "self_ref": "#/texts/1",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "text",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 50.0,
+                    "t": 723.0,
+                    "r": 381.0,
+                    "b": 658.2,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    41
+                  ]
+                }
+              ],
+              "orig": "服务等级 响应时间（分钟） 适用范围 普通 240 一般问题 紧急 15 业务中断",
+              "text": "服务等级 响应时间（分钟） 适用范围 普通 240 一般问题 紧急 15 业务中断",
+              "formatting": null,
+              "hyperlink": null
+            }
+          ],
+          "cell_count": 0,
+          "cells_with_bbox": 0,
+          "cell_texts": [],
+          "header_flagged_texts": [],
+          "unit_literal_present": false,
+          "condition_literal_present": true,
+          "footnote_literal_present": true,
+          "within_baseline_supported_contract": false,
+          "boundary_disposition": "api_success_outside_baseline_contract_requires_review",
+          "automatic_business_acceptance": false,
+          "quality_pass": null
+        },
+        "assessment_is_not_automatic_production_rejection": true
+      },
+      {
+        "name": "mixed-supported-and-borderless",
+        "input_sha256": "97ab8a495352ea38e1e05609391b423e6370871f3c2959b1764266e12d20b7df",
+        "fixture_contract_expected": "rejected",
+        "baseline_status": "rejected",
+        "baseline_api_seconds": [
+          0.1382485609997275,
+          0.1358875240002817,
+          0.12352130300041608
+        ],
+        "baseline_api_median_seconds": 0.1358875240002817,
+        "candidate_statuses": [
+          "success",
+          "success",
+          "success",
+          "success"
+        ],
+        "candidate_setup_seconds": 1.5028179060000184,
+        "candidate_warm_seconds": [
+          1.5808806000000004,
+          1.5475479550000273,
+          1.5491568060001555
+        ],
+        "candidate_warm_median_seconds": 1.5491568060001555,
+        "candidate_fixture_assessment": {
+          "api_status": "success",
+          "pages": {
+            "1": {
+              "size": {
+                "width": 595.0,
+                "height": 842.0
+              },
+              "image": null,
+              "page_no": 1
+            }
+          },
+          "tables": [
+            {
+              "self_ref": "#/tables/0",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "table",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 43.73073196411133,
+                    "t": 732.824462890625,
+                    "r": 550.8417358398438,
+                    "b": 650.3656921386719,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    0
+                  ]
+                }
+              ],
+              "captions": [],
+              "references": [],
+              "footnotes": [],
+              "image": null,
+              "data": {
+                "table_cells": [
+                  {
+                    "bbox": {
+                      "l": 50.0,
+                      "t": 119.0,
+                      "r": 86.0,
+                      "b": 129.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 0,
+                    "end_row_offset_idx": 1,
+                    "start_col_offset_idx": 0,
+                    "end_col_offset_idx": 1,
+                    "text": "服务等级",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 180.0,
+                      "t": 119.0,
+                      "r": 252.0,
+                      "b": 129.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 0,
+                    "end_row_offset_idx": 1,
+                    "start_col_offset_idx": 1,
+                    "end_col_offset_idx": 2,
+                    "text": "响应时间（分钟）",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 345.0,
+                      "t": 119.0,
+                      "r": 381.0,
+                      "b": 129.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 0,
+                    "end_row_offset_idx": 1,
+                    "start_col_offset_idx": 2,
+                    "end_col_offset_idx": 3,
+                    "text": "适用范围",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 50.0,
+                      "t": 146.0,
+                      "r": 68.0,
+                      "b": 156.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 1,
+                    "end_row_offset_idx": 2,
+                    "start_col_offset_idx": 0,
+                    "end_col_offset_idx": 1,
+                    "text": "普通",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 180.0,
+                      "t": 146.0,
+                      "r": 207.0,
+                      "b": 156.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 1,
+                    "end_row_offset_idx": 2,
+                    "start_col_offset_idx": 1,
+                    "end_col_offset_idx": 2,
+                    "text": "240",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 345.0,
+                      "t": 146.0,
+                      "r": 381.0,
+                      "b": 156.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 1,
+                    "end_row_offset_idx": 2,
+                    "start_col_offset_idx": 2,
+                    "end_col_offset_idx": 3,
+                    "text": "一般问题",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 50.0,
+                      "t": 173.0,
+                      "r": 68.0,
+                      "b": 183.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 2,
+                    "end_row_offset_idx": 3,
+                    "start_col_offset_idx": 0,
+                    "end_col_offset_idx": 1,
+                    "text": "紧急",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 180.0,
+                      "t": 173.0,
+                      "r": 198.0,
+                      "b": 183.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 2,
+                    "end_row_offset_idx": 3,
+                    "start_col_offset_idx": 1,
+                    "end_col_offset_idx": 2,
+                    "text": "15",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  },
+                  {
+                    "bbox": {
+                      "l": 345.0,
+                      "t": 173.0,
+                      "r": 381.0,
+                      "b": 183.79999999999995,
+                      "coord_origin": "TOPLEFT"
+                    },
+                    "row_span": 1,
+                    "col_span": 1,
+                    "start_row_offset_idx": 2,
+                    "end_row_offset_idx": 3,
+                    "start_col_offset_idx": 2,
+                    "end_col_offset_idx": 3,
+                    "text": "业务中断",
+                    "column_header": false,
+                    "row_header": false,
+                    "row_section": false,
+                    "fillable": false
+                  }
+                ],
+                "num_rows": 3,
+                "num_cols": 3,
+                "orientation": "rot_0",
+                "grid": [
+                  [
+                    {
+                      "bbox": {
+                        "l": 50.0,
+                        "t": 119.0,
+                        "r": 86.0,
+                        "b": 129.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 0,
+                      "end_row_offset_idx": 1,
+                      "start_col_offset_idx": 0,
+                      "end_col_offset_idx": 1,
+                      "text": "服务等级",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 180.0,
+                        "t": 119.0,
+                        "r": 252.0,
+                        "b": 129.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 0,
+                      "end_row_offset_idx": 1,
+                      "start_col_offset_idx": 1,
+                      "end_col_offset_idx": 2,
+                      "text": "响应时间（分钟）",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 345.0,
+                        "t": 119.0,
+                        "r": 381.0,
+                        "b": 129.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 0,
+                      "end_row_offset_idx": 1,
+                      "start_col_offset_idx": 2,
+                      "end_col_offset_idx": 3,
+                      "text": "适用范围",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    }
+                  ],
+                  [
+                    {
+                      "bbox": {
+                        "l": 50.0,
+                        "t": 146.0,
+                        "r": 68.0,
+                        "b": 156.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 1,
+                      "end_row_offset_idx": 2,
+                      "start_col_offset_idx": 0,
+                      "end_col_offset_idx": 1,
+                      "text": "普通",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 180.0,
+                        "t": 146.0,
+                        "r": 207.0,
+                        "b": 156.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 1,
+                      "end_row_offset_idx": 2,
+                      "start_col_offset_idx": 1,
+                      "end_col_offset_idx": 2,
+                      "text": "240",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 345.0,
+                        "t": 146.0,
+                        "r": 381.0,
+                        "b": 156.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 1,
+                      "end_row_offset_idx": 2,
+                      "start_col_offset_idx": 2,
+                      "end_col_offset_idx": 3,
+                      "text": "一般问题",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    }
+                  ],
+                  [
+                    {
+                      "bbox": {
+                        "l": 50.0,
+                        "t": 173.0,
+                        "r": 68.0,
+                        "b": 183.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 2,
+                      "end_row_offset_idx": 3,
+                      "start_col_offset_idx": 0,
+                      "end_col_offset_idx": 1,
+                      "text": "紧急",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 180.0,
+                        "t": 173.0,
+                        "r": 198.0,
+                        "b": 183.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 2,
+                      "end_row_offset_idx": 3,
+                      "start_col_offset_idx": 1,
+                      "end_col_offset_idx": 2,
+                      "text": "15",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    },
+                    {
+                      "bbox": {
+                        "l": 345.0,
+                        "t": 173.0,
+                        "r": 381.0,
+                        "b": 183.79999999999995,
+                        "coord_origin": "TOPLEFT"
+                      },
+                      "row_span": 1,
+                      "col_span": 1,
+                      "start_row_offset_idx": 2,
+                      "end_row_offset_idx": 3,
+                      "start_col_offset_idx": 2,
+                      "end_col_offset_idx": 3,
+                      "text": "业务中断",
+                      "column_header": false,
+                      "row_header": false,
+                      "row_section": false,
+                      "fillable": false
+                    }
+                  ]
+                ]
+              },
+              "annotations": []
+            }
+          ],
+          "texts": [
+            {
+              "self_ref": "#/texts/0",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "section_header",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 45.0,
+                    "t": 797.0,
+                    "r": 345.0,
+                    "b": 785.0,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    30
+                  ]
+                }
+              ],
+              "orig": "服务响应规范。适用条件：工作日。注：响应时间不等于解决时间。",
+              "text": "服务响应规范。适用条件：工作日。注：响应时间不等于解决时间。",
+              "formatting": null,
+              "hyperlink": null,
+              "level": 1
+            },
+            {
+              "self_ref": "#/texts/1",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "text",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 50.0,
+                    "t": 498.462,
+                    "r": 73.004,
+                    "b": 490.137,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    4
+                  ]
+                },
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 180.0,
+                    "t": 498.462,
+                    "r": 199.99799999999996,
+                    "b": 490.137,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    5,
+                    9
+                  ]
+                },
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 345.0,
+                    "t": 498.462,
+                    "r": 361.002,
+                    "b": 490.137,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    10,
+                    14
+                  ]
+                }
+              ],
+              "orig": "Team Time Unit",
+              "text": "Team Time Unit",
+              "formatting": null,
+              "hyperlink": null
+            },
+            {
+              "self_ref": "#/texts/2",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "text",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 50.0,
+                    "t": 471.462,
+                    "r": 66.506,
+                    "b": 463.137,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    3
+                  ]
+                }
+              ],
+              "orig": "Low",
+              "text": "Low",
+              "formatting": null,
+              "hyperlink": null
+            },
+            {
+              "self_ref": "#/texts/3",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "text",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 180.0,
+                    "t": 471.462,
+                    "r": 195.01199999999997,
+                    "b": 463.137,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    3
+                  ]
+                }
+              ],
+              "orig": "240",
+              "text": "240",
+              "formatting": null,
+              "hyperlink": null
+            },
+            {
+              "self_ref": "#/texts/4",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "text",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 345.0,
+                    "t": 471.462,
+                    "r": 359.499,
+                    "b": 463.137,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    3
+                  ]
+                }
+              ],
+              "orig": "min",
+              "text": "min",
+              "formatting": null,
+              "hyperlink": null
+            },
+            {
+              "self_ref": "#/texts/5",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "text",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 50.0,
+                    "t": 444.462,
+                    "r": 77.495,
+                    "b": 436.137,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    8
+                  ]
+                }
+              ],
+              "orig": "Critical",
+              "text": "Critical",
+              "formatting": null,
+              "hyperlink": null
+            },
+            {
+              "self_ref": "#/texts/6",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "text",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 180.0,
+                    "t": 444.462,
+                    "r": 195.01199999999997,
+                    "b": 436.137,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    3
+                  ]
+                }
+              ],
+              "orig": "999",
+              "text": "999",
+              "formatting": null,
+              "hyperlink": null
+            },
+            {
+              "self_ref": "#/texts/7",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "text",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 345.0,
+                    "t": 444.462,
+                    "r": 359.499,
+                    "b": 436.137,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    3
+                  ]
+                }
+              ],
+              "orig": "min",
+              "text": "min",
+              "formatting": null,
+              "hyperlink": null
+            }
+          ],
+          "cell_count": 9,
+          "cells_with_bbox": 9,
+          "cell_texts": [
+            "服务等级",
+            "响应时间（分钟）",
+            "适用范围",
+            "普通",
+            "240",
+            "一般问题",
+            "紧急",
+            "15",
+            "业务中断"
+          ],
+          "header_flagged_texts": [],
+          "unit_literal_present": true,
+          "condition_literal_present": true,
+          "footnote_literal_present": true,
+          "within_baseline_supported_contract": false,
+          "boundary_disposition": "api_success_outside_baseline_contract_requires_review",
+          "automatic_business_acceptance": false,
+          "quality_pass": null
+        },
+        "assessment_is_not_automatic_production_rejection": true
+      },
+      {
+        "name": "scan-with-footer",
+        "input_sha256": "dd72607dfe3b22cc0963804fc4b8e8bdc2bda68633421e0b0a33a0e01a408185",
+        "fixture_contract_expected": "rejected",
+        "baseline_status": "rejected",
+        "baseline_api_seconds": [
+          0.009460805999879085,
+          0.00956902000007176,
+          0.00897163699983139
+        ],
+        "baseline_api_median_seconds": 0.009460805999879085,
+        "candidate_statuses": [
+          "success",
+          "success",
+          "success",
+          "success"
+        ],
+        "candidate_setup_seconds": 0.8794052069997633,
+        "candidate_warm_seconds": [
+          0.8231633230002444,
+          0.8119198169997617,
+          0.830288634000226
+        ],
+        "candidate_warm_median_seconds": 0.8231633230002444,
+        "candidate_fixture_assessment": {
+          "api_status": "success",
+          "pages": {
+            "1": {
+              "size": {
+                "width": 595.0,
+                "height": 842.0
+              },
+              "image": null,
+              "page_no": 1
+            }
+          },
+          "tables": [],
+          "texts": [
+            {
+              "self_ref": "#/texts/0",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "body",
+              "meta": null,
+              "label": "text",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 45.0,
+                    "t": 36.0,
+                    "r": 72.0,
+                    "b": 25.200000000000045,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    3
+                  ]
+                }
+              ],
+              "orig": "第2页",
+              "text": "第2页",
+              "formatting": null,
+              "hyperlink": null
+            }
+          ],
+          "cell_count": 0,
+          "cells_with_bbox": 0,
+          "cell_texts": [],
+          "header_flagged_texts": [],
+          "unit_literal_present": false,
+          "condition_literal_present": false,
+          "footnote_literal_present": false,
+          "within_baseline_supported_contract": false,
+          "boundary_disposition": "api_success_outside_baseline_contract_requires_review",
+          "automatic_business_acceptance": false,
+          "quality_pass": null,
+          "scan_image_text_recovered": false,
+          "risk": "API success with footer alone is incomplete scanned-document extraction; OCR disabled by design."
+        },
+        "assessment_is_not_automatic_production_rejection": true
+      },
+      {
+        "name": "tiled-scan",
+        "input_sha256": "6896876949d92ea6d311996a0fd68484c8b45b6b51e6d13407d93e67c4fd1f5c",
+        "fixture_contract_expected": "rejected",
+        "baseline_status": "rejected",
+        "baseline_api_seconds": [
+          0.010875950999889028,
+          0.011724274000243895,
+          0.01183283799991841
+        ],
+        "baseline_api_median_seconds": 0.011724274000243895,
+        "candidate_statuses": [
+          "success",
+          "success",
+          "success",
+          "success"
+        ],
+        "candidate_setup_seconds": 0.8771624619998875,
+        "candidate_warm_seconds": [
+          0.8324251770000046,
+          0.921465053999782,
+          0.8353157659998942
+        ],
+        "candidate_warm_median_seconds": 0.8353157659998942,
+        "candidate_fixture_assessment": {
+          "api_status": "success",
+          "pages": {
+            "1": {
+              "size": {
+                "width": 595.0,
+                "height": 842.0
+              },
+              "image": null,
+              "page_no": 1
+            }
+          },
+          "tables": [],
+          "texts": [
+            {
+              "self_ref": "#/texts/0",
+              "parent": {
+                "cref": "#/body"
+              },
+              "children": [],
+              "content_layer": "furniture",
+              "meta": null,
+              "label": "page_footer",
+              "prov": [
+                {
+                  "page_no": 1,
+                  "bbox": {
+                    "l": 45.0,
+                    "t": 24.46199999999999,
+                    "r": 73.521,
+                    "b": 16.136999999999944,
+                    "coord_origin": "BOTTOMLEFT"
+                  },
+                  "charspan": [
+                    0,
+                    6
+                  ]
+                }
+              ],
+              "orig": "Page 1",
+              "text": "Page 1",
+              "formatting": null,
+              "hyperlink": null
+            }
+          ],
+          "cell_count": 0,
+          "cells_with_bbox": 0,
+          "cell_texts": [],
+          "header_flagged_texts": [],
+          "unit_literal_present": false,
+          "condition_literal_present": false,
+          "footnote_literal_present": false,
+          "within_baseline_supported_contract": false,
+          "boundary_disposition": "api_success_outside_baseline_contract_requires_review",
+          "automatic_business_acceptance": false,
+          "quality_pass": null,
+          "scan_image_text_recovered": false,
+          "risk": "API success with footer alone is incomplete scanned-document extraction; OCR disabled by design."
+        },
+        "assessment_is_not_automatic_production_rejection": true
+      }
+    ]
+  }
+}
