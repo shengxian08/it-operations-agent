@@ -1,0 +1,22 @@
+# Build only after tagging the reviewed immutable base image:
+# docker tag sha256:11943d9ed8d4036b954523ee0ec4e53d476d43695605aa430af5a62c7ba26ade itops-technology-review-docling-base:11943d9ed8d4
+# docker build --resource memory=2g --resource cpu-quota=200000 --resource cpu-period=100000 -f experiments/technology_review/Dockerfile.docling -t itops-technology-review-docling:2.132.0 experiments/technology_review
+ARG BASE_IMAGE=itops-technology-review-docling-base:11943d9ed8d4
+FROM ${BASE_IMAGE}
+USER root
+RUN mkdir -p /opt/docling /experiment && cp -a /app/backend/.venv /opt/docling/.venv
+RUN UV_HTTP_TIMEOUT=60 uv pip install --python /opt/docling/.venv/bin/python 'docling==2.132.0'
+# The PyPI CUDA wheel cannot load its compiled ops against this CPU-only torch.
+# Fix only torchvision from the official CPU index; preserve the base torch pin.
+RUN UV_HTTP_TIMEOUT=60 uv pip install --python /opt/docling/.venv/bin/python --no-deps --reinstall-package torchvision --index-url https://download.pytorch.org/whl/cpu 'torchvision==0.29.1+cpu'
+# ldd in the slim Debian 13 base identified these OpenCV runtime dependencies.
+RUN apt-get update && apt-get install -y --no-install-recommends libxcb1 libgl1 libglib2.0-0t64
+RUN /opt/docling/.venv/bin/python -c "import cv2; print('opencv_native_libraries_ok', cv2.__version__)"
+COPY docling_candidate.py /experiment/docling_candidate.py
+RUN chown -R app:app /experiment
+USER app
+ENV PATH=/opt/docling/.venv/bin:/usr/local/bin:/usr/bin:/bin \
+    OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
+    TOKENIZERS_PARALLELISM=false HF_HUB_DISABLE_XET=1
+WORKDIR /experiment
+ENTRYPOINT ["/opt/docling/.venv/bin/python", "/experiment/docling_candidate.py"]
