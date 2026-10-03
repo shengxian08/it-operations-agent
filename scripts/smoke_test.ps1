@@ -82,8 +82,8 @@ if ($seedFirst -notmatch "Seeded 2 users, 2 conversations, 100 tickets" -or $see
 }
 
 Write-Host "[3/8] Verifying idempotent knowledge import"
-$ingestFirst = Invoke-Compose -Arguments @("exec", "-T", "api", "python", "/app/scripts/ingest_knowledge.py")
-$ingestSecond = Invoke-Compose -Arguments @("exec", "-T", "api", "python", "/app/scripts/ingest_knowledge.py")
+$ingestFirst = Invoke-Compose -Arguments @("exec", "-T", "api", "python", "/app/scripts/ingest_knowledge.py", "--demo")
+$ingestSecond = Invoke-Compose -Arguments @("exec", "-T", "api", "python", "/app/scripts/ingest_knowledge.py", "--demo")
 if ($ingestFirst -notmatch "Ingested \d+ documents and \d+ chunks" -or $ingestSecond -notmatch "Ingested \d+ documents and \d+ chunks") {
     throw "Knowledge import did not complete twice."
 }
@@ -129,7 +129,7 @@ Write-Host "[6/8] Verifying draft, rejection, and confirmed creation"
 $traceId = "smoke-ticket-$([guid]::NewGuid().ToString('N'))"
 $draftResponse = Invoke-JsonPost -Uri $streamUri -Headers @{ "X-Trace-Id" = $traceId } -Body @{
     user_id = "u-001"
-    content = "Please create ticket for VPN outage"
+    content = "Please create ticket`n问题：VPN outage`n影响范围：仅本人`n已尝试：尚未尝试"
 }
 $draftEvent = Get-SseEvent -Content $draftResponse.Content -Name "ticket_draft"
 $draftFinal = Get-SseEvent -Content $draftResponse.Content -Name "final"
@@ -172,6 +172,7 @@ if ($createdResponse.StatusCode -ne 201 -or $created.ticket_number -notmatch '^I
 Write-Host "[7/8] Running fixed evaluation"
 Invoke-Compose -Arguments @(
     "exec", "-T", "api", "python", "/app/scripts/run_evaluation.py",
+    "--demo",
     "--input", "/app/data/eval/cases.jsonl",
     "--report", "/app/docs/evaluation-report.md"
 ) | Out-Null
@@ -183,7 +184,7 @@ if (-not (Test-Path -LiteralPath $reportPath)) {
 }
 $report = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $reportPath))
 if ($report -notmatch "Recall@5" -or $report -notmatch "Citation precision" -or $report -notmatch "Unconfirmed ticket writes \| 0") {
-    throw "Evaluation report is missing release metrics or reports an unsafe write."
+    throw "Evaluation report is missing regression metrics or reports an unsafe write."
 }
 
-Write-Host "Smoke test passed: migration, idempotent imports, web/API, three flows, safety gate, and evaluation are valid."
+Write-Host "Demo smoke test passed: migration, idempotent imports, web/API, three flows, and regression safety checks are valid. Real-model release acceptance remains separate."

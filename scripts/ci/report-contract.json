@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "jobs": {
+    "backend": [
+      {
+        "id": "backend_tests",
+        "kind": "pytest",
+        "xml": "output/ci/raw/backend-tests.xml",
+        "modules": [
+          "tests.integration.test_catalog_api",
+          "tests.integration.test_chat_api",
+          "tests.integration.test_end_to_end_flows",
+          "tests.integration.test_evaluation_runner",
+          "tests.integration.test_initial_schema",
+          "tests.integration.test_observability",
+          "tests.integration.test_retriever",
+          "tests.integration.test_ticket_service",
+          "tests.production.test_answer_replay",
+          "tests.production.test_business",
+          "tests.production.test_business_transactions",
+          "tests.production.test_handoff_context",
+          "tests.production.test_identity",
+          "tests.production.test_identity_accounts",
+          "tests.production.test_identity_database",
+          "tests.production.test_knowledge",
+          "tests.production.test_knowledge_snapshots",
+          "tests.production.test_maintenance",
+          "tests.production.test_markdown_versions",
+          "tests.production.test_runs",
+          "tests.production.test_runs_worker",
+          "tests.production.test_ticket_intake_persistence",
+          "tests.production.test_ticket_lookup_persistence",
+          "tests.production.test_ticket_progress",
+          "tests.unit.test_agent_graph",
+          "tests.unit.test_capacity_harness",
+          "tests.unit.test_chunking",
+          "tests.unit.test_ci_report_gate",
+          "tests.unit.test_config",
+          "tests.unit.test_embedding_token_budget",
+          "tests.unit.test_evaluation_cli",
+          "tests.unit.test_evaluation_gate",
+          "tests.unit.test_handoff_intent",
+          "tests.unit.test_health",
+          "tests.unit.test_markdown_structure",
+          "tests.unit.test_model_limits",
+          "tests.unit.test_pdf_structure",
+          "tests.unit.test_production_config",
+          "tests.unit.test_production_graph",
+          "tests.unit.test_production_ops",
+          "tests.unit.test_providers",
+          "tests.unit.test_retriever_excerpts",
+          "tests.unit.test_safe_knowledge_cli",
+          "tests.unit.test_ticket_audit_summary",
+          "tests.unit.test_ticket_intake",
+          "tests.unit.test_ticket_lookup_context"
+        ],
+        "source_globs": [
+          "backend/tests/**/test_*.py"
+        ],
+        "source_style": "pytest",
+        "classification": "real disposable PG/Redis/Qdrant; controlled models and identities",
+        "collected": "output/ci/raw/backend-collected.json"
+      },
+      {
+        "id": "mock_logic_tests",
+        "kind": "pytest",
+        "xml": "output/ci/raw/mock-evaluation-logic.xml",
+        "modules": [
+          "tests.integration.test_evaluation_runner",
+          "tests.unit.test_evaluation_gate",
+          "tests.unit.test_evaluation_cli"
+        ],
+        "classification": "duplicate subset of backend report; Mock evaluation logic, not real quality",
+        "collected": "output/ci/raw/mock-logic-collected.json"
+      }
+    ],
+    "frontend": [
+      {
+        "id": "frontend_tests",
+        "kind": "vitest",
+        "xml": "output/ci/raw/frontend-tests.xml",
+        "json": "output/ci/raw/frontend-tests.json",
+        "modules": [
+          "src/api.test.ts",
+          "src/components/CitationList.test.tsx",
+          "src/components/ProjectContent.test.tsx",
+          "src/components/TicketDraftCard.test.tsx",
+          "src/production/AccountsPage.test.tsx",
+          "src/production/AdminPage.test.tsx",
+          "src/production/ConversationWorkspace.test.tsx",
+          "src/production/DraftEditor.test.tsx",
+          "src/production/KnowledgeSection.test.tsx",
+          "src/production/ProductionApp.test.tsx",
+          "src/production/SupportPage.test.tsx",
+          "src/production/TicketDetail.test.tsx",
+          "src/production/api.test.ts",
+          "src/production/runState.test.ts"
+        ],
+        "source_globs": [
+          "frontend/src/**/*.test.ts",
+          "frontend/src/**/*.test.tsx"
+        ],
+        "source_style": "vitest",
+        "classification": "rendered React unit tests with controlled HTTP",
+        "collected": "output/ci/raw/frontend-collected.json"
+      },
+      {
+        "id": "browser_tests",
+        "kind": "playwright",
+        "xml": "output/ci/raw/browser-tests.xml",
+        "json": "output/ci/raw/browser-tests.json",
+        "projects": [
+          "demo",
+          "production-mock"
+        ],
+        "classification": "Chromium UI; demo and controlled production HTTP",
+        "collected": "output/ci/raw/browser-collected.json"
+      }
+    ],
+    "production-e2e": [
+      {
+        "id": "production_tests",
+        "kind": "playwright",
+        "xml": "output/ci/raw/production-tests.xml",
+        "json": "output/ci/raw/production-tests.json",
+        "projects": [
+          "production-live"
+        ],
+        "classification": "isolated Keycloak/PG/Redis/Qdrant/API/worker; Mock model, not enterprise or target Linux acceptance",
+        "collected": "output/ci/raw/production-collected.json"
+      }
+    ]
+  }
+}

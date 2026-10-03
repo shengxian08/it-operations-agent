@@ -1,0 +1,24 @@
+{
+  "realm": "itops",
+  "enabled": true,
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "maxFailureWaitSeconds": 900,
+  "passwordPolicy": "length(12) and digits(1) and lowerCase(1) and upperCase(1) and specialChars(1)",
+  "sslRequired": "external",
+  "roles": { "realm": [{"name":"employee"},{"name":"support"},{"name":"admin"}] },
+  "clients": [{
+    "clientId":"itops-web", "enabled":true, "protocol":"openid-connect",
+    "publicClient":false, "secret":"${OIDC_CLIENT_SECRET}",
+    "standardFlowEnabled":true, "directAccessGrantsEnabled":false,
+    "implicitFlowEnabled":false, "serviceAccountsEnabled":false,
+    "redirectUris":["${PUBLIC_BASE_URL}/api/v1/auth/callback"],
+    "webOrigins":["${PUBLIC_BASE_URL}"],
+    "attributes":{"pkce.code.challenge.method":"S256","post.logout.redirect.uris":"${PUBLIC_BASE_URL}"},
+    "defaultClientScopes":["profile","email","roles"],
+    "protocolMappers":[{"name":"itops-realm-roles","protocol":"openid-connect","protocolMapper":"oidc-usermodel-realm-role-mapper","consentRequired":false,"config":{"claim.name":"realm_access.roles","jsonType.label":"String","multivalued":"true","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}}]
+  }]
+}

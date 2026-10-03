@@ -1,0 +1,30 @@
+name: itops-engineering-test
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: itops_testing
+      POSTGRES_USER: itops_test
+      POSTGRES_PASSWORD: isolated-test-only
+    ports: ["127.0.0.1:15932:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U itops_test -d itops_testing"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    tmpfs: [/var/lib/postgresql/data]
+    volumes: ["./infra/postgres/test-init.sh:/docker-entrypoint-initdb.d/10-testing.sh:ro"]
+  redis:
+    image: redis:7-alpine
+    ports: ["127.0.0.1:16379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  qdrant:
+    image: qdrant/qdrant:v1.15.4
+    ports: ["127.0.0.1:17333:6333"]
+    environment:
+      QDRANT__TELEMETRY_DISABLED: "true"
+    tmpfs: [/qdrant/storage]

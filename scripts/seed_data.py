@@ -143,12 +143,12 @@ async def seed_data() -> tuple[int, int, int]:
                     TicketEvent(
                         ticket_id=ticket.id,
                         event_type="seeded",
-                        details={"summary": row["latest_update"]},
+                        details={"summary": row["latest_update"], "visibility": "public"},
                         created_at=row["updated_at"],
                     )
                 )
             else:
-                event.details = {"summary": row["latest_update"]}
+                event.details = {"summary": row["latest_update"], "visibility": "public"}
                 event.created_at = row["updated_at"]
 
     return len(manifest["users"]), len(manifest["conversations"]), len(ticket_rows)

@@ -1,0 +1,70 @@
+# Merge with compose.test.yml. Every credential and database here is disposable test data.
+x-e2e-env: &e2e-env
+  ENVIRONMENT: test
+  DEMO_ENABLED: "false"
+  MODEL_MODE: mock
+  DATABASE_URL: postgresql+asyncpg://itops_test:isolated-test-only@postgres:5432/itops_e2e
+  REDIS_URL: redis://redis:6379/1
+  QDRANT_URL: http://qdrant:6333
+  PUBLIC_BASE_URL: http://127.0.0.1:18517
+  OIDC_ISSUER: http://keycloak:8080/identity/realms/itops
+  OIDC_CLIENT_ID: itops-web
+  OIDC_CLIENT_SECRET: e2e-client-secret-not-for-production
+  SESSION_SECRET: e2e-session-secret-not-for-production-123456789
+  COOKIE_SECURE: "false"
+  KNOWLEDGE_STORAGE_PATH: /app/knowledge
+  USER_RATE_LIMIT: 100
+services:
+  migrate:
+    image: itops-engineering-api:test
+    build: {context: ./backend, target: production}
+    environment: *e2e-env
+    command: [alembic, upgrade, head]
+    depends_on:
+      postgres: {condition: service_healthy}
+  api:
+    image: itops-engineering-api:test
+    environment: *e2e-env
+    volumes: [e2e_knowledge:/app/knowledge]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      storage-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready',timeout=3)"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  worker:
+    image: itops-engineering-api:test
+    environment:
+      <<: *e2e-env
+      RUNTIME_ROLE: worker
+    command: [python, -m, app.production.worker]
+    volumes: [e2e_knowledge:/app/knowledge]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      storage-init: {condition: service_completed_successfully}
+  storage-init:
+    image: itops-engineering-api:test
+    user: "0:0"
+    command: [sh, -c, "mkdir -p /app/knowledge && chown 10001:10001 /app/knowledge"]
+    volumes: [e2e_knowledge:/app/knowledge]
+  web:
+    image: itops-engineering-web:test
+    build: {context: ./frontend, target: production}
+    ports: ["127.0.0.1:18517:8080"]
+    depends_on:
+      api: {condition: service_healthy}
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.6.3
+    command: [start-dev, --import-realm]
+    environment:
+      KC_HTTP_RELATIVE_PATH: /identity
+      KC_HOSTNAME: http://keycloak:8080/identity
+      KC_BOOTSTRAP_ADMIN_USERNAME: e2e-bootstrap
+      KC_BOOTSTRAP_ADMIN_PASSWORD: E2e-only-bootstrap-123
+      KC_HEALTH_ENABLED: "true"
+    ports: ["127.0.0.1:8080:8080"]
+    volumes: ["./infra/keycloak/e2e-realm.json:/opt/keycloak/data/import/itops-realm.json:ro"]
+volumes:
+  e2e_knowledge:

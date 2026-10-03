@@ -1,0 +1,285 @@
+name: ${COMPOSE_PROJECT_NAME:-itops-production}
+x-runtime-environment: &runtime-environment
+  ENVIRONMENT: production
+  DEMO_ENABLED: "false"
+  PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?HTTPS public URL is required}
+  OIDC_ISSUER: ${OIDC_ISSUER:?OIDC issuer is required}
+  OIDC_CLIENT_ID: itops-web
+  OIDC_CLIENT_SECRET_FILE: /run/secrets/oidc_client_secret
+  SESSION_SECRET_FILE: /run/secrets/session_secret
+  COOKIE_SECURE: "true"
+  DATABASE_URL_FILE: /run/secrets/app_database_url
+  REDIS_URL_FILE: /run/secrets/redis_url
+  QDRANT_URL: http://qdrant:6333
+  QDRANT_READ_API_KEY_FILE: /run/secrets/qdrant_read_api_key
+  MODEL_MODE: openai
+  OPENAI_BASE_URL: ${OPENAI_BASE_URL:?Approved model URL is required}
+  OPENAI_MODEL: ${OPENAI_MODEL:?Approved model name is required}
+  OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
+  MODEL_MONTHLY_BUDGET: ${MODEL_MONTHLY_BUDGET:?Budget is required}
+  MODEL_INPUT_PRICE: ${MODEL_INPUT_PRICE:?Input price per million tokens is required}
+  MODEL_OUTPUT_PRICE: ${MODEL_OUTPUT_PRICE:?Output price per million tokens is required}
+  EMBEDDING_MODE: sentence-transformer
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-zh-v1.5}
+  EMBEDDING_REVISION: ${EMBEDDING_REVISION:?Pinned model commit is required}
+  EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-512}
+  KNOWLEDGE_STORAGE_PATH: /app/knowledge
+  LOG_DIRECTORY: /app/logs
+  HF_HOME: /app/models
+  HF_HUB_OFFLINE: "1"
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+x-app-secrets: &app-secrets
+  - app_database_url
+  - redis_url
+  - oidc_client_secret
+  - session_secret
+  - openai_api_key
+  - qdrant_read_api_key
+x-app: &app
+  image: ${ITOPS_API_IMAGE:?API image is required}:${IMAGE_TAG:?Verified commit tag is required}
+  environment: *runtime-environment
+  secrets: *app-secrets
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  networks: [private]
+  logging:
+    driver: json-file
+    options: {max-size: "20m", max-file: "5"}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password, app_db_password, migration_db_password, keycloak_db_password]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sh:/docker-entrypoint-initdb.d/10-itops.sh:ro
+    restart: unless-stopped
+    mem_limit: 2g
+    networks: [private]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, /run/secrets/redis_config]
+    secrets: [redis_config, redis_password]
+    volumes: [redis_data:/data]
+    restart: unless-stopped
+    mem_limit: 256m
+    networks: [private]
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$(cat /run/secrets/redis_password)" redis-cli ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  qdrant:
+    image: qdrant/qdrant:v1.15.4
+    entrypoint: [/bin/sh, /opt/itops/start.sh]
+    secrets: [qdrant_api_key, qdrant_read_api_key]
+    environment: {QDRANT__TELEMETRY_DISABLED: "true"}
+    volumes:
+      - qdrant_data:/qdrant/storage
+      - ./infra/qdrant/start.sh:/opt/itops/start.sh:ro
+    restart: unless-stopped
+    mem_limit: 2g
+    networks: [private]
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.6.3
+    entrypoint: [/bin/bash, /opt/itops/start.sh]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_RELATIVE_PATH: /identity
+      KC_HOSTNAME: ${PUBLIC_BASE_URL:?}/identity
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_HTTP_MANAGEMENT_RELATIVE_PATH: /
+      KC_BOOTSTRAP_ADMIN_USERNAME: bootstrap-admin
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?}
+    secrets: [keycloak_db_password, keycloak_admin_password, oidc_client_secret]
+    volumes:
+      - ./infra/keycloak/start.sh:/opt/itops/start.sh:ro
+      - ./infra/keycloak/itops-realm.json:/opt/keycloak/data/import/itops-realm.json:ro
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: unless-stopped
+    mem_limit: 2g
+    networks: [private]
+    healthcheck:
+      test: [CMD, /bin/bash, -ec, "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&3; grep -m1 -E '^HTTP/1\\.[01] 200' <&3"]
+      interval: 10s
+      timeout: 4s
+      retries: 18
+      start_period: 60s
+  migrate:
+    <<: *app
+    user: "10001:10001"
+    restart: "no"
+    command: [alembic, upgrade, head]
+    environment:
+      <<: *runtime-environment
+      DATABASE_URL_FILE: /run/secrets/migration_database_url
+    secrets:
+      - migration_database_url
+      - redis_url
+      - oidc_client_secret
+      - session_secret
+      - openai_api_key
+      - qdrant_read_api_key
+    depends_on:
+      postgres: {condition: service_healthy}
+  storage-init:
+    image: ${ITOPS_API_IMAGE:?}:${IMAGE_TAG:?}
+    user: "0:0"
+    command: [sh, -c, "mkdir -p /app/knowledge /app/models /app/logs && chown 10001:10001 /app/knowledge /app/models /app/logs"]
+    volumes: [knowledge_data:/app/knowledge, model_cache:/app/models, app_logs:/app/logs]
+    networks: [private]
+  model-download:
+    <<: *app
+    image: ${ITOPS_WORKER_IMAGE:?}:${IMAGE_TAG:?}
+    restart: "no"
+    profiles: [setup]
+    command: [python, /app/backend/app/production/download_model.py]
+    environment:
+      <<: *runtime-environment
+      HF_HUB_OFFLINE: "0"
+    volumes: [model_cache:/app/models]
+    depends_on:
+      storage-init: {condition: service_completed_successfully}
+  api:
+    <<: *app
+    mem_limit: 1g
+    volumes: [knowledge_data:/app/knowledge, app_logs:/app/logs]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+      storage-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready',timeout=3)"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+      start_period: 20s
+  worker:
+    <<: *app
+    image: ${ITOPS_WORKER_IMAGE:?}:${IMAGE_TAG:?}
+    command: [python, -m, app.production.worker]
+    environment:
+      <<: *runtime-environment
+      RUNTIME_ROLE: worker
+      QDRANT_API_KEY_FILE: /run/secrets/qdrant_api_key
+    secrets: [app_database_url, redis_url, oidc_client_secret, session_secret, openai_api_key, qdrant_api_key, qdrant_read_api_key]
+    mem_limit: 6g
+    cpus: 4
+    volumes: [knowledge_data:/app/knowledge, model_cache:/app/models, app_logs:/app/logs]
+    stop_grace_period: 130s
+    healthcheck:
+      test: [CMD, python, -c, "import pathlib,time; assert time.time()-pathlib.Path('/app/logs/worker.heartbeat').stat().st_mtime < 60"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+      storage-init: {condition: service_completed_successfully}
+  web:
+    image: ${ITOPS_WEB_IMAGE:?}:${IMAGE_TAG:?}
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp, /var/cache/nginx, /var/run]
+    mem_limit: 128m
+    networks: [private]
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  gateway:
+    image: nginx:1.28-alpine
+    entrypoint: [nginx, -g, "daemon off;"]
+    ports: ["443:8443"]
+    secrets: [tls_cert, tls_key]
+    volumes: ["./infra/nginx/gateway.conf:/etc/nginx/nginx.conf:ro"]
+    restart: unless-stopped
+    mem_limit: 128m
+    networks: [private]
+    depends_on:
+      web: {condition: service_healthy}
+      keycloak: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, -q, --spider, --no-check-certificate, https://127.0.0.1:8443/]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.133.0
+    command: [--config=/etc/otelcol/config.yaml]
+    volumes: ["./infra/monitoring/otel.yaml:/etc/otelcol/config.yaml:ro"]
+    restart: unless-stopped
+    mem_limit: 256m
+    networks: [private]
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command: [--config.file=/etc/prometheus/prometheus.yml, --storage.tsdb.retention.time=30d]
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    mem_limit: 512m
+    networks: [private]
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    command: [--config.file=/etc/alertmanager/config.yml, --storage.path=/alertmanager]
+    volumes:
+      - "${ALERTMANAGER_CONFIG:?Approved alert receiver configuration is required}:/etc/alertmanager/config.yml:ro"
+      - alertmanager_data:/alertmanager
+    restart: unless-stopped
+    mem_limit: 128m
+    networks: [private]
+
+networks:
+  private:
+    driver: bridge
+volumes:
+  postgres_data:
+  redis_data:
+  qdrant_data:
+  knowledge_data:
+  model_cache:
+  prometheus_data:
+  app_logs:
+  alertmanager_data:
+secrets:
+  postgres_password: {file: "${SECRET_DIR:-./secrets}/postgres_password"}
+  app_db_password: {file: "${SECRET_DIR:-./secrets}/app_db_password"}
+  migration_db_password: {file: "${SECRET_DIR:-./secrets}/migration_db_password"}
+  app_database_url: {file: "${SECRET_DIR:-./secrets}/app_database_url"}
+  migration_database_url: {file: "${SECRET_DIR:-./secrets}/migration_database_url"}
+  keycloak_db_password: {file: "${SECRET_DIR:-./secrets}/keycloak_db_password"}
+  keycloak_admin_password: {file: "${SECRET_DIR:-./secrets}/keycloak_admin_password"}
+  oidc_client_secret: {file: "${SECRET_DIR:-./secrets}/oidc_client_secret"}
+  session_secret: {file: "${SECRET_DIR:-./secrets}/session_secret"}
+  redis_password: {file: "${SECRET_DIR:-./secrets}/redis_password"}
+  redis_url: {file: "${SECRET_DIR:-./secrets}/redis_url"}
+  redis_config: {file: "${SECRET_DIR:-./secrets}/redis_config"}
+  qdrant_api_key: {file: "${SECRET_DIR:-./secrets}/qdrant_api_key"}
+  qdrant_read_api_key: {file: "${SECRET_DIR:-./secrets}/qdrant_read_api_key"}
+  openai_api_key: {file: "${SECRET_DIR:-./secrets}/openai_api_key"}
+  tls_cert: {file: "${SECRET_DIR:-./secrets}/tls_cert"}
+  tls_key: {file: "${SECRET_DIR:-./secrets}/tls_key"}

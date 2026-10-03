@@ -1,0 +1,253 @@
+name: Production validation and image artifacts
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ENVIRONMENT: test
+      DEMO_ENABLED: "true"
+      MODEL_MODE: mock
+      COOKIE_SECURE: "false"
+      DATABASE_URL: postgresql+asyncpg://itops_test:isolated-test-only@127.0.0.1:15932/itops_testing
+      REDIS_URL: redis://127.0.0.1:16379/0
+      QDRANT_URL: http://127.0.0.1:17333
+      TEST_DATABASE_URL: postgresql+asyncpg://itops_test:isolated-test-only@127.0.0.1:15932/itops_testing
+      TEST_REDIS_URL: redis://127.0.0.1:16379/0
+      TEST_QDRANT_URL: http://127.0.0.1:17333
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.10"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install the frozen Python environment
+        working-directory: backend
+        run: uv sync --frozen --extra dev --python 3.11
+      - name: Start isolated disposable dependencies
+        run: docker compose --project-name itops-ci-${{ github.run_id }}-${{ github.job }} -f compose.test.yml up -d --wait --wait-timeout 120
+      - name: Check Python code
+        working-directory: backend
+        run: uv run --frozen --extra dev ruff check --config pyproject.toml app tests ../scripts
+      - name: Exercise migrations on the disposable database
+        working-directory: backend
+        run: |
+          uv run --frozen --extra dev alembic upgrade head
+          uv run --frozen --extra dev alembic downgrade base
+          uv run --frozen --extra dev alembic upgrade head
+          uv run --frozen --extra dev alembic check
+      - name: Run every backend test with real isolated dependencies
+        id: backend_tests
+        working-directory: backend
+        run: >-
+          uv run --frozen --extra dev pytest tests -q --strict-config -o xfail_strict=true
+          -p scripts.ci.pytest_inventory --ci-inventory=../output/ci/raw/backend-collected.json
+          --junitxml=../output/ci/raw/backend-tests.xml
+      - name: Record the boundary of the mock evaluation logic gate
+        id: mock_logic_tests
+        working-directory: backend
+        run: |
+          uv run --frozen --extra dev pytest tests/integration/test_evaluation_runner.py tests/unit/test_evaluation_gate.py tests/unit/test_evaluation_cli.py -q --strict-config -o xfail_strict=true -p scripts.ci.pytest_inventory --ci-inventory=../output/ci/raw/mock-logic-collected.json --junitxml=../output/ci/raw/mock-evaluation-logic.xml
+          echo 'Mock runtime and evaluation CLI/gate regression tests passed. The legacy unlabelled dataset is not measured citation precision or real-model quality. Real-model release acceptance remains required.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Require complete backend evidence with zero skips
+        if: always()
+        working-directory: backend
+        run: >-
+          uv run --frozen --extra dev python ../scripts/ci/check_reports.py --job backend
+          --outcome backend_tests=${{ steps.backend_tests.outcome }}
+          --outcome backend_tests_collection=${{ steps.backend_tests.outcome }}
+          --outcome mock_logic_tests=${{ steps.mock_logic_tests.outcome }}
+          --outcome mock_logic_tests_collection=${{ steps.mock_logic_tests.outcome }}
+          --output ../output/ci/public/backend-summary.json
+      - name: Save test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-evidence-${{ github.sha }}
+          path: output/ci/public/backend-summary.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Show restricted test service diagnostics on failure
+        if: failure()
+        run: docker compose --project-name itops-ci-${{ github.run_id }}-${{ github.job }} -f compose.test.yml logs --tail 150
+      - name: Remove only this job's disposable stack
+        if: always()
+        run: docker compose --project-name itops-ci-${{ github.run_id }}-${{ github.job }} -f compose.test.yml down --volumes --remove-orphans
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Collect every frontend testcase before execution
+        id: frontend_tests_collection
+        run: npx vitest list --json=../output/ci/raw/frontend-collected.json --allowOnly=false
+      - name: Run frontend tests with complete machine reports
+        id: frontend_tests
+        run: >-
+          npm test -- --reporter=default --reporter=junit --reporter=json
+          --outputFile.junit=../output/ci/raw/frontend-tests.xml
+          --outputFile.json=../output/ci/raw/frontend-tests.json --allowOnly=false --retry=0
+      - name: Build the production bundle
+        env:
+          VITE_DEMO_ENABLED: "false"
+        run: |
+          npm run build
+          if find dist/assets -name '*DemoApp*' | grep -q .; then
+            echo 'Production build unexpectedly contains the demo application' >&2
+            exit 1
+          fi
+      - run: npx playwright install --with-deps chromium
+      - name: Collect the complete demo and production mock browser scenarios
+        id: browser_tests_collection
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ github.workspace }}/output/ci/raw/browser-collected.json
+        run: npx playwright test --list --project=demo --project=production-mock --reporter=json --forbid-only --retries=0
+      - name: Exercise the preserved demo and production API scenarios
+        id: browser_tests
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: ${{ github.workspace }}/output/ci/raw/browser-tests.xml
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ github.workspace }}/output/ci/raw/browser-tests.json
+          PLAYWRIGHT_JUNIT_INCLUDE_PROJECT_IN_TEST_NAME: "true"
+        run: npx playwright test --project=demo --project=production-mock --reporter=line,junit,json --forbid-only --fail-on-flaky-tests --retries=0
+      - name: Require complete frontend evidence with zero skips
+        if: always()
+        run: >-
+          python3 ../scripts/ci/check_reports.py --job frontend
+          --outcome frontend_tests=${{ steps.frontend_tests.outcome }}
+          --outcome frontend_tests_collection=${{ steps.frontend_tests_collection.outcome }}
+          --outcome browser_tests=${{ steps.browser_tests.outcome }}
+          --outcome browser_tests_collection=${{ steps.browser_tests_collection.outcome }}
+          --output ../output/ci/public/frontend-summary.json
+      - name: Save browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-evidence-${{ github.sha }}
+          path: output/ci/public/frontend-summary.json
+          if-no-files-found: error
+          retention-days: 14
+
+  production-e2e:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      E2E_BASE_URL: http://127.0.0.1:18517
+      E2E_EMPLOYEE_USERNAME: e2e-employee
+      E2E_EMPLOYEE_PASSWORD: E2e-only-employee-123
+      E2E_SUPPORT_USERNAME: e2e-support
+      E2E_SUPPORT_PASSWORD: E2e-only-support-123
+      E2E_ADMIN_USERNAME: e2e-admin
+      E2E_ADMIN_PASSWORD: E2e-only-admin-123
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frozen browser dependencies
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Collect both production protocol scenarios before execution
+        id: production_tests_collection
+        working-directory: frontend
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ github.workspace }}/output/ci/raw/production-collected.json
+        run: npx playwright test --list --project=production-live --reporter=json --forbid-only --retries=0
+      - name: Start independent production-protocol dependencies
+        run: docker compose --project-name itops-ci-${{ github.run_id }}-${{ github.job }} -f compose.test.yml -f compose.e2e.yml up -d --wait --wait-timeout 120 postgres redis qdrant
+      - name: Verify the initializer created the disposable E2E database
+        run: docker compose --project-name itops-ci-${{ github.run_id }}-${{ github.job }} -f compose.test.yml -f compose.e2e.yml exec -T postgres psql -U itops_test -d itops_e2e -v ON_ERROR_STOP=1 -c 'SELECT 1;'
+      - name: Start real Keycloak, API, worker and production static frontend
+        run: |
+          docker compose --project-name itops-ci-${{ github.run_id }}-${{ github.job }} -f compose.test.yml -f compose.e2e.yml up -d --build --wait --wait-timeout 180
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8080/identity/realms/itops/.well-known/openid-configuration >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'Test Keycloak did not become ready' >&2
+          exit 1
+      - name: Verify real OIDC and the complete production business lifecycle
+        id: production_tests
+        working-directory: frontend
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: ${{ github.workspace }}/output/ci/raw/production-tests.xml
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ github.workspace }}/output/ci/raw/production-tests.json
+          PLAYWRIGHT_JUNIT_INCLUDE_PROJECT_IN_TEST_NAME: "true"
+        run: npx playwright test --project=production-live --reporter=line,junit,json --forbid-only --fail-on-flaky-tests --retries=0
+      - name: Require production protocol evidence with zero skips
+        if: always()
+        run: >-
+          python3 scripts/ci/check_reports.py --job production-e2e
+          --outcome production_tests=${{ steps.production_tests.outcome }}
+          --outcome production_tests_collection=${{ steps.production_tests_collection.outcome }}
+          --output output/ci/public/production-summary.json
+      - name: Save production E2E evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-e2e-evidence-${{ github.sha }}
+          path: output/ci/public/production-summary.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Show disposable stack diagnostics on failure
+        if: failure()
+        run: docker compose --project-name itops-ci-${{ github.run_id }}-${{ github.job }} -f compose.test.yml -f compose.e2e.yml logs --tail 150
+      - name: Remove only this job's disposable stack
+        if: always()
+        run: docker compose --project-name itops-ci-${{ github.run_id }}-${{ github.job }} -f compose.test.yml -f compose.e2e.yml down --volumes --remove-orphans
+
+  immutable-images:
+    needs: [backend, frontend, production-e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build images identified by the exact tested commit
+        run: |
+          mkdir -p output/images
+          docker build --target production --label org.opencontainers.image.revision="${GITHUB_SHA}" -t "itops-api:${GITHUB_SHA}" backend
+          docker build --target worker --label org.opencontainers.image.revision="${GITHUB_SHA}" -t "itops-worker:${GITHUB_SHA}" backend
+          docker build --target production --build-arg VITE_DEMO_ENABLED=false --label org.opencontainers.image.revision="${GITHUB_SHA}" -t "itops-web:${GITHUB_SHA}" frontend
+          docker run --rm --network none --read-only --workdir /tmp -v "${GITHUB_WORKSPACE}/scripts/production/verify_image.py:/verify_image.py:ro" "itops-api:${GITHUB_SHA}" python /verify_image.py > output/images/api-package-verification.json
+          docker run --rm --network none --read-only --workdir /tmp -v "${GITHUB_WORKSPACE}/scripts/production/verify_image.py:/verify_image.py:ro" "itops-worker:${GITHUB_SHA}" python /verify_image.py > output/images/worker-package-verification.json
+          docker image inspect "itops-api:${GITHUB_SHA}" "itops-worker:${GITHUB_SHA}" "itops-web:${GITHUB_SHA}" > output/images/image-manifest.json
+          docker save "itops-api:${GITHUB_SHA}" "itops-worker:${GITHUB_SHA}" "itops-web:${GITHUB_SHA}" | gzip > "output/images/itops-${GITHUB_SHA}.tar.gz"
+          cd output/images
+          sha256sum *.tar.gz *.json > SHA256SUMS
+          echo 'Images are artifacts only. No external registry push or deployment occurs.' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: immutable-images-${{ github.sha }}
+          path: output/images/
+          compression-level: 0
+          retention-days: 14

@@ -6,6 +6,9 @@
 
 # Local environment and dependency artifacts
 .env
+.env.*
+!.env.example
+!.env.production.example
 .venv/
 __pycache__/
 *.py[cod]
@@ -20,3 +23,17 @@ dist/
 build/
 *.tsbuildinfo
 *.log
+secrets/
+.env.production
+.env.staging
+backups/
+data/production-knowledge/
+artifacts/
+secrets-restored/
+restore-config/
+tmp/
+output/
+profiles/
+*.trace.zip
+# Unclassified local note; not part of the publication manifest.
+/.txt

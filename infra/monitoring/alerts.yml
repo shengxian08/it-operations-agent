@@ -1,0 +1,46 @@
+groups:
+  - name: itops
+    rules:
+      - alert: ApiUnavailable
+        expr: up{job="api"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "IT assistant API is unreachable"}
+      - alert: ApiErrors
+        expr: sum(rate(itops_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(itops_http_requests_total[5m])),0.001) > 0.05
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: "API 5xx exceeds 5%"}
+      - alert: SlowApi
+        expr: histogram_quantile(0.95,sum by (le)(rate(itops_http_duration_seconds_bucket[5m]))) > 0.5
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "API P95 exceeds 500ms"}
+      - alert: DependencyUnavailable
+        expr: sum by (dependency)(increase(itops_dependency_errors_total[5m])) > 3
+        labels: {severity: critical}
+        annotations: {summary: "A dependency repeatedly fails readiness"}
+      - alert: WorkerUnavailable
+        expr: itops_worker_heartbeat_age_seconds > 60
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: "Background worker heartbeat is missing"}
+      - alert: QueueBacklog
+        expr: itops_queue_oldest_seconds > 120 or itops_stale_run_leases > 0
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: "Jobs are not converging"}
+      - alert: KnowledgeJobFailed
+        expr: delta(itops_knowledge_jobs{status="failed"}[5m]) > 0 or delta(itops_knowledge_index_jobs{status="failed"}[5m]) > 0
+        labels: {severity: warning}
+        annotations: {summary: "Knowledge parsing or publication failed"}
+      - alert: ModelBudgetHigh
+        expr: itops_model_budget_used / clamp_min(itops_model_budget_limit,0.001) > 0.8
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: "Model monthly budget exceeds 80%"}
+      - alert: KnowledgeDiskLow
+        expr: itops_knowledge_disk_free_bytes < 10737418240
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "Knowledge disk has less than 10GB free"}

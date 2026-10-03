@@ -1,0 +1,9 @@
+# Replace this validation-only receiver with the company's approved webhook/email configuration.
+# Exercise delivery before setting alerts_passed=true in release evidence.
+route:
+  receiver: operators
+  group_by: [alertname]
+  group_wait: 30s
+  repeat_interval: 4h
+receivers:
+  - name: operators
