@@ -27,7 +27,7 @@ def test_test_environment_can_disable_demo_without_external_models():
 
 
 def production_values():
-    return dict(_env_file=None, environment="production", demo_enabled=False, model_mode="openai",
+    return dict(_env_file=None, environment="production", demo_enabled=False, model_mode="openai", cookie_secure=True,
         public_base_url="https://it.example.com", oidc_issuer="https://it.example.com/identity/realms/itops",
         oidc_client_secret="long-identity-secret", session_secret="x" * 48,
         database_url="postgresql+asyncpg://app:password@postgres/itops", redis_url="redis://:password@redis:6379/0",
@@ -42,6 +42,11 @@ def production_values():
 def test_production_rejects_unauthenticated_dependencies_and_unpinned_model(change):
     with pytest.raises(ValidationError, match="production"):
         Settings(**(production_values() | change))
+
+
+def test_production_rejects_insecure_cookie_with_valid_dependencies():
+    with pytest.raises(ValidationError, match="HTTPS and Secure cookies are required"):
+        Settings(**(production_values() | {"cookie_secure": False}))
 
 
 def test_api_can_start_with_only_its_read_credential(monkeypatch, tmp_path):
