@@ -306,6 +306,21 @@ test("recovers a missing final frame, reloads history, and opens citation source
   await page.reload(); await expect(page.getByText("请检查VPN证书是否过期。", { exact: true })).toHaveCount(1); await page.getByRole("button", { name: "知识资料", exact: true }).click(); await page.getByRole("button", { name: /VPN排障手册/ }).click(); await expect(page.getByText("请检查客户端证书有效期。")).toBeVisible();
 });
 
+test("ticket lookup renders public progress in the assistant answer and restores it (Mock HTTP)", async ({ page }) => {
+  const state = await setup(page);
+  const answer = "工单 IT-2026-0001 当前状态为 resolved。最近可见记录（2026-10-03 00:02:00 UTC，支持回复）：合成支持公开进度";
+  const result = { run_id: "run-progress", message_id: "progress-answer", trace_id: "progress-trace", status: "completed", final_state: "ticket_status", answer };
+  state.messages = [{ id: "progress-query", role: "user", content: "查询工单 IT-2026-0001 的进度" }, { id: result.message_id, role: "assistant", content: answer }];
+  state.runs = [{ id: result.run_id, conversation_id: conversation.id, status: "completed", trace_id: result.trace_id, result, events: [], created_at: "2026-10-03T00:03:00Z" }];
+  await page.goto("/");
+  await expect(page.locator(".message-assistant")).toContainText("合成支持公开进度");
+  await expect(page.locator(".outcome-card")).toContainText("已查询工单");
+  await expect(page.locator(".message-assistant")).toContainText("2026-10-03 00:02:00 UTC");
+  await page.reload();
+  await expect(page.locator(".message-assistant")).toHaveCount(1);
+  await expect(page.locator(".message-assistant")).toContainText(answer);
+});
+
 test("unknown run submission retries with the same body and key", async ({ page }) => {
   await setup(page); const requests: Array<{ key: string | undefined; body: unknown }> = []; let attempt = 0;
   await page.route("**/api/v1/conversations/*/runs", async (route) => { if (route.request().method() !== "POST") return route.fallback(); requests.push({ key: route.request().headers()["idempotency-key"], body: route.request().postDataJSON() }); attempt += 1; if (attempt === 1) return route.abort(); return route.fallback(); });
