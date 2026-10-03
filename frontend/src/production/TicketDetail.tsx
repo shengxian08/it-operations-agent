@@ -1,0 +1,32 @@
+import { useEffect, useRef, useState } from "react";
+import { api, ApiError, isAbort } from "./api";
+import { dateTime, ErrorNotice, StatusBadge } from "./shared";
+import type { Assignee, Ticket } from "./types";
+
+export function TicketDetail({ number, support, assignees, onUpdated }: { number: string; support: boolean; assignees: Assignee[]; onUpdated: (ticket: Ticket) => void }) {
+  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [comment, setComment] = useState("");
+  const [visibility, setVisibility] = useState<"public" | "internal">("public");
+  useEffect(() => { setComment(""); setVisibility("public"); }, [number, support]);
+  const [status, setStatus] = useState("pending");
+  const [assignee, setAssignee] = useState("");
+  const [refresh, setRefresh] = useState(0);
+  const [notice, setNotice] = useState<string | null>(null);
+  const lock = useRef(false);
+  useEffect(() => {
+    const controller = new AbortController(); setLoading(true); setError(null); setTicket(null); setNotice(null);
+    api.ticket(number, controller.signal).then((result) => { if (controller.signal.aborted) return; setTicket(result); setStatus(result.status); setAssignee(result.assignee_id ?? ""); }).catch((caught: unknown) => { if (!isAbort(caught)) setError(caught); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [number, refresh]);
+  async function mutate(action: () => Promise<unknown>, message: string) {
+    if (lock.current) return; lock.current = true; setBusy(true); setError(null); setNotice(null);
+    try { await action(); const updated = await api.ticket(number); setTicket(updated); setStatus(updated.status); setAssignee(updated.assignee_id ?? ""); setNotice(message); onUpdated(updated); return true; }
+    catch (caught) { setError(caught); if (caught instanceof ApiError && [401, 403, 404].includes(caught.status)) setTicket(null); if (caught instanceof ApiError && caught.status === 409) setNotice("记录已被其他人更新，请刷新详情后再操作。"); else if (!(caught instanceof ApiError) || caught.status >= 500) setNotice("操作结果暂时未知，请刷新详情核对处理记录后再操作。"); return false; }
+    finally { lock.current = false; setBusy(false); }
+  }
+  async function addComment() { if (!ticket || !comment.trim()) return; const succeeded = await mutate(() => api.comment(number, ticket.version, comment.trim(), support ? visibility : "public"), "补充信息已保存。"); if (succeeded) setComment(""); }
+  return <article className="detail-panel" aria-label="工单详情"><div className="button-row"><button disabled={loading || busy} onClick={() => setRefresh((value) => value + 1)}>刷新工单详情</button></div><ErrorNotice error={error} onRetry={() => setRefresh((value) => value + 1)} />{loading ? <p role="status">正在加载工单详情…</p> : null}{notice ? <p className="action-notice" role="status">{notice}</p> : null}{ticket ? <><span className="section-kicker">{ticket.ticket_number} / V{ticket.version}</span><h2>{ticket.title}</h2><div className="detail-meta"><StatusBadge status={ticket.status} /><span>{ticket.category} · 优先级 {ticket.priority}</span><span>更新于 {dateTime(ticket.updated_at)}</span></div><p className="article-text">{ticket.description}</p>{ticket.attempted_steps.length ? <div><h3>已尝试步骤</h3><ol>{ticket.attempted_steps.map((step, index) => <li key={index}>{step}</li>)}</ol></div> : null}{support ? <fieldset className="management-form" disabled={busy}><legend>分派与状态</legend><label>处理人<select value={assignee} onChange={(event) => setAssignee(event.target.value)}><option value="">未分派</option>{assignees.map((user) => <option value={user.id} key={user.id}>{user.display_name}</option>)}</select></label><label>工单状态<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="pending">待处理</option><option value="in_progress">处理中</option><option value="resolved">已解决</option><option value="closed">已关闭</option></select></label><button className="primary-button" disabled={status === ticket.status && assignee === (ticket.assignee_id ?? "")} onClick={() => mutate(() => api.updateTicket(number, ticket.version, { status, assignee_id: assignee || null }), "工单处理状态已保存。")}>保存工单处理</button></fieldset> : null}{!support && (ticket.status === "resolved" || ticket.status === "closed") ? <div className="reopen-ticket"><p>问题仍未解决时，可重新开启此工单。</p><button className="secondary-button" disabled={busy} onClick={() => mutate(() => api.updateTicket(number, ticket.version, { status: "in_progress" }), "工单已重新开启。")}>重新开启工单</button></div> : null}<section className="ticket-comments"><h3>补充与回复</h3>{ticket.comments?.length ? ticket.comments.map((item) => <article className="comment-entry" key={item.id}><small>{item.author_id} · {dateTime(item.created_at)}</small><strong>{item.visibility === "public" ? "公开回复" : item.visibility === "internal" ? "内部备注（仅支持人员）" : "未分类历史备注（员工不可见）"}</strong><p>{item.content}</p>{support ? <div className="button-row">{item.visibility !== "public" ? <button className="secondary-button" disabled={busy} onClick={() => mutate(() => api.classifyComment(number, item.id, ticket.version, "public"), "记录已设为公开回复。")}>核对后公开此记录</button> : null}{item.visibility !== "internal" ? <button className="secondary-button" disabled={busy} onClick={() => mutate(() => api.classifyComment(number, item.id, ticket.version, "internal"), "记录已设为内部备注。")}>设为内部备注</button> : null}</div> : null}</article>) : <p className="empty-note">暂无补充记录。</p>}{support ? <label className="standalone-field">回复可见性<select value={visibility} onChange={(event) => setVisibility(event.target.value as "public" | "internal")} disabled={busy}><option value="public">公开回复（员工可见）</option><option value="internal">内部备注（仅支持人员）</option></select></label> : <p className="empty-note">补充信息对工单员工和支持人员可见。</p>}<label className="standalone-field">补充信息<textarea rows={3} maxLength={10000} value={comment} onChange={(event) => setComment(event.target.value)} disabled={busy} /></label><button className="primary-button" disabled={busy || !comment.trim()} onClick={addComment}>{busy ? "正在保存" : "保存补充信息"}</button></section><details className="ticket-audit"><summary>处理审计记录（{ticket.audit?.length ?? 0}）</summary>{ticket.audit?.map((entry) => <div className="audit-entry" key={entry.id}><strong>{entry.event_type}</strong><small>{entry.actor_id} · {dateTime(entry.created_at)}</small><pre>{JSON.stringify(entry.details, null, 2)}</pre></div>)}</details></> : null}</article>;
+}

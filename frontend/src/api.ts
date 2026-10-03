@@ -3,6 +3,9 @@ import type {
   MessageFeedback,
   TicketCreateResult,
   TicketDraft,
+  KnowledgeArticle,
+  KnowledgeDocument,
+  TicketSummary,
 } from "./types";
 
 const CHAT_EVENT_NAMES = new Set([
@@ -145,4 +148,37 @@ export async function recordFeedback(
     },
   );
   if (!response.ok) throw await responseError(response);
+}
+
+export async function loadKnowledgeDocuments(
+  userId: string,
+  signal?: AbortSignal,
+): Promise<KnowledgeDocument[]> {
+  const response = await fetch(`/api/knowledge?user_id=${encodeURIComponent(userId)}`, { signal });
+  if (!response.ok) throw await responseError(response);
+  const result = (await response.json()) as { documents: KnowledgeDocument[] };
+  return result.documents;
+}
+
+export async function loadKnowledgeArticle(
+  documentId: string,
+  userId: string,
+  signal?: AbortSignal,
+): Promise<KnowledgeArticle> {
+  const response = await fetch(
+    `/api/knowledge/${encodeURIComponent(documentId)}?user_id=${encodeURIComponent(userId)}`,
+    { signal },
+  );
+  if (!response.ok) throw await responseError(response);
+  return (await response.json()) as KnowledgeArticle;
+}
+
+export async function loadUserTickets(
+  userId: string,
+  signal?: AbortSignal,
+): Promise<TicketSummary[]> {
+  const response = await fetch(`/api/tickets?user_id=${encodeURIComponent(userId)}`, { signal });
+  if (!response.ok) throw await responseError(response);
+  const result = (await response.json()) as { tickets: TicketSummary[] };
+  return result.tickets;
 }

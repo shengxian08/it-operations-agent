@@ -1,0 +1,65 @@
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { api, ApiError, isAbort } from "./api";
+import { readStored, removeStored, storeValue } from "./storage";
+import { dateTime, ErrorNotice, PageHeading, ROLE_LABELS, StatusBadge } from "./shared";
+import { KnowledgeSection } from "./KnowledgeSection";
+import type { IndexJobAccepted, KnowledgeDocument, KnowledgeJob, KnowledgeRevision } from "./types";
+
+interface PendingIndexTask { id: string; message: string }
+export default function AdminPage({ userId = "admin" }: { userId?: string }) {
+  const [jobs, setJobs] = useState<KnowledgeJob[]>([]); const [documents, setDocuments] = useState<KnowledgeDocument[]>([]); const [revisions, setRevisions] = useState<KnowledgeRevision[]>([]);
+  const [jobCursor, setJobCursor] = useState<string | null>(null); const [documentCursor, setDocumentCursor] = useState<string | null>(null);
+  const [selectedJob, setSelectedJob] = useState<string | null>(null); const [job, setJob] = useState<KnowledgeJob | null>(null);
+  const [title, setTitle] = useState(""); const [access, setAccess] = useState("employee"); const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(true); const [jobLoading, setJobLoading] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState<unknown>(null); const [jobError, setJobError] = useState<unknown>(null); const [notice, setNotice] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0); const [jobRefresh, setJobRefresh] = useState(0); const [publishChecked, setPublishChecked] = useState(false); const [deactivateId, setDeactivateId] = useState<string | null>(null); const [activateId, setActivateId] = useState<string | null>(null);
+  const lock = useRef(false); const fileInput = useRef<HTMLInputElement>(null);
+  const storageKey = `${userId}:knowledge-index-task`;
+  const [indexTask, setIndexTask] = useState<PendingIndexTask | null>(() => readStored<PendingIndexTask>(storageKey));
+  const [indexStatus, setIndexStatus] = useState("queued"); const [indexRefresh, setIndexRefresh] = useState(0); const [indexError, setIndexError] = useState<unknown>(null);
+  useEffect(() => {
+    if (!indexTask) return; const controller = new AbortController(); let timer: ReturnType<typeof setTimeout> | undefined; lock.current = true; setBusy(true); setIndexError(null);
+    async function poll() {
+      try {
+        const task = await api.indexJob(indexTask!.id, controller.signal); if (controller.signal.aborted) return; setIndexStatus(task.status);
+        if (task.status === "failed") { setError(task.error === "embedding_input_too_long" ? "知识版本准备失败：标题、章节与正文的完整输入超过模型预算。请人工整理过长章节或命令块，重新上传并核对后发布。" : `知识版本准备失败（${task.error || "index_build_failed"}）。请刷新管理记录后重试。`); removeStored(storageKey); setIndexTask(null); lock.current = false; setBusy(false); return; }
+        if (task.status === "completed") {
+          if (!task.result?.revision_id) throw new ApiError("知识版本任务缺少完成结果，请恢复任务。", 0, "missing_index_result");
+          setNotice(`${indexTask!.message} 当前知识版本：${task.result.revision_id}${task.result.excluded_documents?.length ? `。${task.result.excluded_documents.length} 篇文档待重新解析并核对，暂不进入新版本检索。` : ""}`); removeStored(storageKey); setIndexTask(null); setPublishChecked(false); setDeactivateId(null); setActivateId(null); setRefresh((value) => value + 1); setJobRefresh((value) => value + 1); lock.current = false; setBusy(false); return;
+        }
+        timer = setTimeout(() => { void poll(); }, 1000);
+      } catch (caught) { if (!isAbort(caught)) setIndexError(caught); }
+    }
+    void poll(); return () => { controller.abort(); if (timer) clearTimeout(timer); };
+  }, [indexTask?.id, indexRefresh, storageKey]);
+  useEffect(() => {
+    const controller = new AbortController(); setLoading(true); setError(null);
+    Promise.all([api.jobs(undefined, controller.signal), api.documents(undefined, controller.signal), api.revisions(controller.signal)]).then(([jobList, documentList, revisionList]) => { if (controller.signal.aborted) return; setJobs(jobList.jobs); setJobCursor(jobList.next_cursor); setDocuments(documentList.documents); setDocumentCursor(documentList.next_cursor); setRevisions(revisionList.revisions); }).catch((caught: unknown) => { if (!isAbort(caught)) setError(caught); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [refresh]);
+  useEffect(() => {
+    if (!selectedJob) return; const controller = new AbortController(); let timer: ReturnType<typeof setTimeout> | undefined; setJobLoading(true); setJobError(null); setPublishChecked(false);
+    async function load() { try { const result = await api.job(selectedJob!, controller.signal); if (controller.signal.aborted) return; setJob(result); setJobs((current) => current.map((item) => item.id === result.id ? result : item)); setJobLoading(false); if (result.status === "queued" || result.status === "running") timer = setTimeout(() => { void load(); }, 1500); } catch (caught) { if (!isAbort(caught)) { setJobError(caught); setJobLoading(false); } } }
+    setJob(null); void load(); return () => { controller.abort(); if (timer) clearTimeout(timer); };
+  }, [selectedJob, jobRefresh]);
+  async function upload(event: FormEvent) {
+    event.preventDefault(); if (!file || !title.trim() || lock.current) return;
+    if (!/\.(md|pdf)$/i.test(file.name)) { setError("请选择 Markdown（.md）或 PDF 文件。"); return; }
+    lock.current = true; setBusy(true); setError(null); setNotice(null);
+    try { const uploaded = await api.upload(file, title.trim(), access); setJobs((current) => [uploaded, ...current]); setSelectedJob(uploaded.id); setFile(null); setTitle(""); if (fileInput.current) fileInput.current.value = ""; setNotice("文档已接收，解析完成后请预览并发布。"); }
+    catch (caught) { setError(caught); } finally { lock.current = false; setBusy(false); }
+  }
+  async function change(action: () => Promise<{ revision_id: string; status: string } | IndexJobAccepted>, message: string) {
+    if (lock.current) return; lock.current = true; setBusy(true); setError(null); setNotice(null);
+    let queued = false;
+    try { const result = await action(); if ("index_job_id" in result) { const task = { id: result.index_job_id, message }; storeValue(storageKey, task); setIndexStatus(result.status); setIndexTask(task); queued = true; } else { setNotice(`${message} 当前知识版本：${result.revision_id}`); setPublishChecked(false); setDeactivateId(null); setActivateId(null); setRefresh((value) => value + 1); setJobRefresh((value) => value + 1); } }
+    catch (caught) { setError(caught); } finally { if (!queued) { lock.current = false; setBusy(false); } }
+  }
+  async function moreJobs() { if (!jobCursor || loading) return; setLoading(true); try { const result = await api.jobs(jobCursor); setJobs((current) => [...current, ...result.jobs.filter((item) => !current.some((existing) => item.id === existing.id))]); setJobCursor(result.next_cursor); } catch (caught) { setError(caught); } finally { setLoading(false); } }
+  async function moreDocuments() { if (!documentCursor || loading) return; setLoading(true); try { const result = await api.documents(documentCursor); setDocuments((current) => [...current, ...result.documents.filter((item) => !current.some((existing) => item.id === existing.id))]); setDocumentCursor(result.next_cursor); } catch (caught) { setError(caught); } finally { setLoading(false); } }
+  return <section className="production-page"><PageHeading kicker="KNOWLEDGE OPERATIONS" title="知识管理" description="上传资料后先预览，再发布为新的知识版本。可停用文档，或激活历史版本恢复知识库。" /><ErrorNotice error={error} onRetry={() => setRefresh((value) => value + 1)} />{indexTask ? <section className="result-card index-progress" aria-label="知识版本任务"><p role="status">正在准备知识版本，完成后会自动切换并刷新资料。</p><StatusBadge status={indexStatus} /><small>任务 {indexTask.id}</small><ErrorNotice error={indexError} onRetry={() => setIndexRefresh((value) => value + 1)} /></section> : null}{notice ? <p className="action-notice" role="status">{notice}</p> : null}<form className="upload-form" onSubmit={upload}><fieldset disabled={busy}><legend>上传知识资料</legend><p className="field-wide">PDF 支持带文字层的普通段落和单页规则线框表格。扫描件、合并表头、无框、多栏和跨页表格需要人工整理；发布前请逐项核对表头、单位、条件与数值。</p><p className="field-wide">Markdown 的命令和配置请使用完整代码块。预览会保留换行、缩进和真实章节；过长的完整块或含过多章节信息的段落需要人工整理后重新上传。</p><label>文档标题<input required value={title} maxLength={300} onChange={(event) => setTitle(event.target.value)} /></label><label>可访问角色<select value={access} onChange={(event) => setAccess(event.target.value)}><option value="employee">员工及以上</option><option value="support">支持专员及管理员</option><option value="admin">仅管理员</option></select></label><label className="field-wide">知识文件<input ref={fileInput} type="file" required onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label><button className="primary-button" disabled={!file || !title.trim()}>{busy ? "正在处理" : "上传并准备预览"}</button></fieldset></form><div className="button-row"><button disabled={loading} onClick={() => setRefresh((value) => value + 1)}>刷新知识管理</button></div>{loading ? <p role="status">正在加载管理记录…</p> : null}
+    <section className="admin-block"><h3>上传与解析任务</h3><div className="record-detail-layout"><div className="record-list" aria-label="知识任务列表">{jobs.map((item) => <button className={selectedJob === item.id ? "record-row selected" : "record-row"} key={item.id} onClick={() => setSelectedJob(item.id)}><strong>{item.title}</strong><small>{dateTime(item.created_at)}</small><StatusBadge status={item.status} /></button>)}{!jobs.length && !loading ? <p className="empty-note">暂无上传任务。</p> : null}{jobCursor ? <button disabled={loading} onClick={moreJobs}>加载更多任务</button> : null}</div><article className="detail-panel" aria-label="发布预览"><ErrorNotice error={jobError} onRetry={() => setJobRefresh((value) => value + 1)} />{jobLoading ? <p role="status">正在加载任务预览…</p> : null}{job ? <><div className="card-title-row"><h3>{job.title}</h3><StatusBadge status={job.status} /></div><p className="detail-meta">可访问角色：{ROLE_LABELS[job.access_level]}</p>{job.error ? <ErrorNotice error={job.error} /> : null}{job.sections?.length ? job.sections.map((section, index) => <KnowledgeSection section={section} key={index} />) : <p className="article-text">{job.content || (job.status === "queued" || job.status === "running" ? "正在解析文件，预览将在准备完成后出现。" : "此任务没有可预览的正文。")}</p>}{job.status === "ready" && job.requires_reparse ? <p role="status">此预览需要重新解析，请重新上传同一文件并核对新版预览后发布。</p> : null}{job.status === "ready" && !job.requires_reparse ? <div className="publish-actions"><label className="confirmation-check"><input type="checkbox" checked={publishChecked} disabled={busy} onChange={(event) => setPublishChecked(event.target.checked)} />已核对正文与访问权限，确认发布此资料</label><button className="primary-button" disabled={!publishChecked || busy} onClick={() => change(() => api.publish(job.id), "知识资料已发布。")}>发布知识资料</button></div> : null}</> : !jobLoading ? <p className="empty-note">选择任务查看解析状态与正文预览。</p> : null}</article></div></section>
+    <section className="admin-block"><h3>已发布文档</h3><div className="document-admin-list">{documents.map((document) => <article className="document-admin-row" key={document.id}><div><strong>{document.title}</strong><small>版本 {document.version} · {ROLE_LABELS[document.access_level]}</small></div><StatusBadge status={document.status} />{document.requires_reparse ? <p role="status">{document.reparse_reason === "markdown_structure" ? "旧版 Markdown 待重新上传并核对，暂不进入新版本检索。" : "旧版 PDF 待重新上传并核对，暂不提供检索。"}</p> : null}{deactivateId === document.id ? <div className="inline-confirm"><span>确认从新版本中停用此文档？</span><button disabled={busy} onClick={() => change(() => api.deactivate(document.id), "文档已停用。")}>确认停用</button><button disabled={busy} onClick={() => setDeactivateId(null)}>返回</button></div> : <button disabled={busy || document.status !== "active"} onClick={() => setDeactivateId(document.id)}>停用文档</button>}</article>)}</div>{!documents.length && !loading ? <p className="empty-note">暂无已发布文档。</p> : null}{documentCursor ? <button disabled={loading} onClick={moreDocuments}>加载更多已发布文档</button> : null}</section>
+    <section className="admin-block"><h3>知识版本与回滚</h3><div className="revision-list">{revisions.map((revision) => <article className="revision-row" key={revision.id}><div><strong>{revision.id}</strong><small>{dateTime(revision.created_at)} · {revision.document_count} 篇文档</small></div>{revision.active ? <span className="status-badge status-active">当前版本</span> : activateId === revision.id ? <div className="inline-confirm"><span>新请求将使用此历史版本。</span><button disabled={busy} onClick={() => change(() => api.activate(revision.id), "历史知识版本已激活。")}>确认激活版本</button><button disabled={busy} onClick={() => setActivateId(null)}>返回</button></div> : <button disabled={busy} onClick={() => setActivateId(revision.id)}>激活此版本</button>}</article>)}</div>{!revisions.length && !loading ? <p className="empty-note">知识库尚无已发布版本。</p> : null}</section>
+  </section>;
+}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { TicketCreateResult, TicketDraft, TicketPriority } from "../types";
+import { PRIORITY_LABELS } from "../demoContent";
 
 interface TicketDraftCardProps {
   draft: TicketDraft;
@@ -12,12 +13,6 @@ interface TicketDraftCardProps {
 }
 
 const PRIORITIES: TicketPriority[] = ["low", "medium", "high", "critical"];
-const PRIORITY_LABELS: Record<TicketPriority, string> = {
-  low: "低",
-  medium: "中",
-  high: "高",
-  critical: "紧急",
-};
 
 export function TicketDraftCard({
   draft,
@@ -76,6 +71,7 @@ export function TicketDraftCard({
             ))}
           </select>
         </label>
+        <p className="field-help field-wide">优先级表示影响程度，不代表处理人；<a href="#tickets">查看四级说明</a>。修改草稿后需要重新生成确认令牌。</p>
         <label className="field-wide">
           问题描述
           <textarea

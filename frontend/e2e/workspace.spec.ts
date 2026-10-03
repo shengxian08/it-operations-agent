@@ -24,6 +24,19 @@ async function send(page: Page, message = "VPN 连不上怎么办？") {
   await page.getByRole("button", { name: "发送请求" }).click();
 }
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/knowledge?user_id=*", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ documents: [] }),
+  }));
+  await page.route("**/api/tickets?user_id=*", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ tickets: [] }),
+  }));
+});
+
 test("renders a complete API stream and ignores unknown events", async ({ page }) => {
   await mockStream(
     page,
@@ -38,8 +51,10 @@ test("renders a complete API stream and ignores unknown events", async ({ page }
 
   await send(page);
   await expect(page.getByText("请先检查客户端证书是否过期。")).toBeVisible();
-  await expect(page.getByText("正在检索知识")).toBeVisible();
+  await expect(page.getByText("已根据资料回答")).toBeVisible();
   await expect(page.getByText("VPN 排障手册")).toBeVisible();
+  await page.getByText("处理过程").click();
+  await expect(page.getByText("检索知识资料")).toBeVisible();
 });
 
 test("shows the status returned for a ticket lookup", async ({ page }) => {
@@ -61,7 +76,9 @@ test("shows the status returned for a ticket lookup", async ({ page }) => {
 
   await send(page, "查询工单 IT-2026-0001");
   await expect(page.getByText("工单 IT-2026-0001 当前状态为 pending。")).toBeVisible();
-  await expect(page.getByText("正在查询工单")).toBeVisible();
+  await expect(page.getByText("已查询本人工单")).toBeVisible();
+  await page.getByText("处理过程").click();
+  await expect(page.getByText("查询本人工单", { exact: true })).toBeVisible();
 });
 
 test("confirms an untouched draft using its API token and trace", async ({ page }) => {
@@ -72,7 +89,7 @@ test("confirms an untouched draft using its API token and trace", async ({ page 
     sse(
       ["run_started", { run_id: "run-ticket", message_id: "user-msg", trace_id: "trace-2" }],
       ["ticket_draft", { draft, confirmation_token: "bound-token", trace_id: "trace-2" }],
-      ["final", { run_id: "run-ticket", message_id: "assistant-msg", answer: "请确认工单草稿。", final_state: "ticket_draft", trace_id: "trace-2" }],
+      ["final", { run_id: "run-ticket", message_id: "assistant-msg", answer: "请确认工单草稿。", final_state: "awaiting_confirmation", trace_id: "trace-2" }],
     ),
   );
   await page.route("**/api/conversations/*/ticket-confirmations", async (route) => {
@@ -88,7 +105,8 @@ test("confirms an untouched draft using its API token and trace", async ({ page 
   await send(page);
   await page.getByRole("checkbox", { name: /我已核对/ }).check();
   await page.getByRole("button", { name: "确认并创建工单" }).click();
-  await expect(page.getByText(/INC-1001/)).toBeVisible();
+  await expect(page.getByText("工单 INC-1001 已提交，可在下方工单列表中查看。")).toBeVisible();
+  await expect(page.getByText("INC-1001", { exact: true })).toBeVisible();
   expect(confirmation).toMatchObject({
     user_id: "u-001",
     confirmation_token: "bound-token",
@@ -105,7 +123,7 @@ test("editing a draft disables confirmation and never submits the old token", as
     sse(
       ["run_started", { run_id: "run-edited", message_id: "user-msg", trace_id: "trace-3" }],
       ["ticket_draft", { draft, confirmation_token: "must-not-be-used", trace_id: "trace-3" }],
-      ["final", { run_id: "run-edited", message_id: "assistant-msg", answer: "请确认工单草稿。", final_state: "ticket_draft", trace_id: "trace-3" }],
+      ["final", { run_id: "run-edited", message_id: "assistant-msg", answer: "请确认工单草稿。", final_state: "awaiting_confirmation", trace_id: "trace-3" }],
     ),
   );
   await page.route("**/api/conversations/*/ticket-confirmations", async (route) => {
