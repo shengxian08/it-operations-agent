@@ -19,7 +19,7 @@
 
 [生产验证工作流](../../.github/workflows/production-validation.yml) 保留冻结依赖、隔离服务、迁移、构建、真实 Keycloak 协议加 Mock 模型及精确 commit 镜像检查。[报告门禁](../../scripts/ci/check_reports.py) 验证 XML 拓扑、执行前收集清单与 XML/JSON 逐例身份、必需模块及浏览器项目；拒绝失败、错误、跳过、预期失败、重试、遗漏/重复和收集或执行失败。GitHub 报告还要求准确 checkout SHA 与执行后干净源码；上传范围限于安全摘要及对应 commit 镜像 artifact。
 
-整个剩余增量的一次独立审查已完成，原结论为 5 项 Important、ready: No。作者一次修复并完整回归，原 13 项反例保持源码不变后由作者重跑全部通过，没有第二轮 reviewer 或新的独立批准。源码推送及该提交的 GitHub Actions 实际结果尚待执行；后续以精确提交、CI run URL 和 artifact 为准，本机通过不能冒认为 GitHub 已通过。
+整个剩余增量的一次独立审查已完成，原结论为 5 项 Important、ready: No。作者一次修复并完整回归，原 13 项反例保持源码不变后由作者重跑全部通过，没有第二轮 reviewer 或新的独立批准。完整项目已正常推送到 `codex/production-engineering`；软件提交 `6aa3570ecfa6f662d99a5ffccbfc5d6d5346b630` 的 GitHub Actions 四个任务全部成功，实际 616 后端、46 前端、31 Mock 浏览器及 2 项真实协议 E2E 全部通过，0 failures/errors/skipped，三份 commit 镜像构建与包/源码检查通过。测试输入/定位的两项 CI 修复、精确 run、制品及分类见[GitHub 交付记录](github-delivery.md)。本次文档归档另增加小型镜像 metadata 制品，最后提交的实际状态可从记录中的分支 Actions 入口核对。
 
 ## 真实门禁
 

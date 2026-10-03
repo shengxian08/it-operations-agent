@@ -16,10 +16,10 @@
 
 原审查和独立反例在本地 `artifacts/remaining-tasks/final-review.md`、`review-probes/` 留存，作者 RED/GREEN 与修复前源码在 `final-fixes/` 留存。这些是本地留存位置，公开仓库只保存本页、测试源码和安全摘要。实际 PG/Redis/Qdrant 为可丢弃测试服务；文本、身份、模型输出与浏览器 HTTP 为受控数据。
 
-修复后最终全量为 **615 后端、46 前端、30 demo/production-mock 浏览器 passed，failures/errors/skipped 均为 0**，完整收集清单逐例匹配实际报告；构建、Ruff、锁与迁移一致性检查通过。取消相关 157 与 CI 门禁 51 属于重复子集，不另加到总数。原审查 13 项反例复制到独立留存目录，源码逐字节一致，由作者重跑全部通过；原 13 项失败报告不覆盖。这是作者修复核验，没有改变 reviewer 原 ready: No，也没有第二轮独立批准。完整交付状态见[公开验收索引](README.md)和[机器摘要](software-validation.json)，尚未推送或运行该提交的 GitHub CI。
+修复后作者最终全量为 **615 后端、46 前端、30 demo/production-mock 浏览器 passed，failures/errors/skipped 均为 0**，完整收集清单逐例匹配实际报告；构建、Ruff、锁与迁移一致性检查通过。取消相关 157 与 CI 门禁 51 属于重复子集，不另加到总数。原审查 13 项反例复制到独立留存目录，源码逐字节一致，由作者重跑全部通过；原 13 项失败报告不覆盖。这是作者修复核验，没有改变 reviewer 原 ready: No，也没有第二轮独立批准。随后源码正常推送，616 后端、46 前端、31 Mock 浏览器、2 项真实协议 E2E 及 commit 镜像实际 GitHub 门禁通过；两项测试配置/定位修正与精确来源见[GitHub 交付记录](github-delivery.md)、[公开验收索引](README.md)和[机器摘要](software-validation.json)。
 
 ## 审查未判定的范围
 
 真实故障 PDF、人工相关集合、批准真实模型与企业 embedding（T06），以及目标 Linux/TLS/企业身份、容量、完整恢复/外部备份、回滚和实际 receiver（T07）仍缺批准输入和执行证据。此次审查、受控回归、源码或镜像交付不能关闭这些门禁。
 
-生产库中 legacy/orphan 数量与频率没有读取；非支持 PDF 布局、任意自然语言的普遍语义正确性、所有依赖的 CVE/供应链与穷尽渗透测试未由本次审查证明。Reviewer 没有重跑完整视觉/跨平台性能，作者截图与测试仅按其原分类留证。实际 GitHub Actions、production-live 与镜像执行仍须后续真实运行核对。
+生产库中 legacy/orphan 数量与频率没有读取；非支持 PDF 布局、任意自然语言的普遍语义正确性、所有依赖的 CVE/供应链与穷尽渗透测试未由本次审查证明。Reviewer 没有重跑完整视觉/跨平台性能，作者截图与测试仅按其原分类留证。后续 GitHub Actions、production-live 和镜像已实际运行，按[交付记录](github-delivery.md)的合成身份/Mock 模型边界留证，T06/T07 继续未验。

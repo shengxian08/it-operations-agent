@@ -7,7 +7,8 @@
 - [x] workflow 接入机器报告与精确上传：冻结依赖、真实隔离服务、迁移/build/Mock协议及commit镜像原门禁全部保留。全部原始报告只在runner内供检查，公开artifact限定安全summary；不部署。
 - [x] 整理公开说明/证据索引与明确manifest。历史本机artifact用本地留存路径说明，避免作为不存在的公开链接；旧真实未验保持未验。精选截图必须是已人工核对合成/Mock，不发布浏览器trace、模型上下文或企业文件。
 - [x] 整个增量一次最终独立审查，5项Important作者一次RED→GREEN修复、逆向及最终615后端/46前端/30浏览器通过；原13反例逐字节相同后作者重跑通过。原ready: No保留，没有第二轮独立批准。
-- [ ] 逐文件逻辑提交/正常push origin，验证远端SHA/tree与实际CI/artifact；必要时修复CI实际失败并记录。
+- [x] 逐文件逻辑提交/正常push origin，远端6aa3570/tree一致、实际CI四任务success；CI-001生产有效配置和CI-002正文定位已稳定复现并最小修正，616/46/31/2均passed0f/e/s，镜像构建与包检查通过，原失败记录保留。
+- [ ] 最后文档/小型metadata归档提交及其实际CI、制品和canonical源码ZIP核对。
 
 首轮作者业务验收：537后端、46前端、30 demo/production-mock浏览器，0 failures/errors/skipped；迁移0006、Ruff、锁与构建通过。后续CI工具/发布变更必须使用新的对应报告，不能继承为新代码已通过。
 

@@ -88,7 +88,179 @@
     "worktree_dirty": true,
     "github_run_url": null
   },
-  "github_delivery": "pending authorized normal branch push and exact-run validation",
+  "github_delivery": {
+    "software_commit": "6aa3570ecfa6f662d99a5ffccbfc5d6d5346b630",
+    "tree": "d7543e968b7fd24dc132e01c78815c01d442ab56",
+    "branch": "codex/production-engineering",
+    "run_id": 37100100559,
+    "run_url": "https://github.com/shengxian08/it-operations-agent/actions/runs/37100100559",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "backend",
+        "conclusion": "success",
+        "url": "https://github.com/shengxian08/it-operations-agent/actions/runs/37100100559/job/111137790720"
+      },
+      {
+        "name": "frontend",
+        "conclusion": "success",
+        "url": "https://github.com/shengxian08/it-operations-agent/actions/runs/37100100559/job/111137790862"
+      },
+      {
+        "name": "production-e2e",
+        "conclusion": "success",
+        "url": "https://github.com/shengxian08/it-operations-agent/actions/runs/37100100559/job/111138126693"
+      },
+      {
+        "name": "immutable-images",
+        "conclusion": "success",
+        "url": "https://github.com/shengxian08/it-operations-agent/actions/runs/37100100559/job/111138468060"
+      }
+    ],
+    "safe_summaries_verified": [
+      {
+        "job": "backend",
+        "commit": "6aa3570ecfa6f662d99a5ffccbfc5d6d5346b630",
+        "run_url": "https://github.com/shengxian08/it-operations-agent/actions/runs/37100100559",
+        "summary_sha256": "ceb1897739413c7fcbd6fd7db10783a35693d528488fae7b992e8a7381267b0e",
+        "reports": [
+          {
+            "id": "backend_tests",
+            "counts": {
+              "tests": 616,
+              "failures": 0,
+              "errors": 0,
+              "skipped": 0,
+              "passed": 616
+            },
+            "collected_tests": 616,
+            "hashes": {
+              "xml": "d9a32f899da5ea5ad487bb8e6ff075cd716ee9daa7d192787c157f4a015c0af5",
+              "collected": "fa896f9b12b38d5059178cfba2d2196e0d2cab329264b42dd90f496028515c40"
+            },
+            "classification": "real disposable PG/Redis/Qdrant; controlled models and identities"
+          },
+          {
+            "id": "mock_logic_tests",
+            "counts": {
+              "tests": 21,
+              "failures": 0,
+              "errors": 0,
+              "skipped": 0,
+              "passed": 21
+            },
+            "collected_tests": 21,
+            "hashes": {
+              "xml": "04c3b1004a7a74f13b6edbe72a91ec21766a6f8e6674f379dbf6584a0631052f",
+              "collected": "d39cde96ab4434762dd0d7286ac29f3bf66b3fa18dbeee875c93080554c572fc"
+            },
+            "classification": "duplicate subset of backend report; Mock evaluation logic, not real quality"
+          }
+        ]
+      },
+      {
+        "job": "frontend",
+        "commit": "6aa3570ecfa6f662d99a5ffccbfc5d6d5346b630",
+        "run_url": "https://github.com/shengxian08/it-operations-agent/actions/runs/37100100559",
+        "summary_sha256": "6a2a74096c1d7ef3881dc28727b3003ce299fd798a6b54904643a0a8c947258b",
+        "reports": [
+          {
+            "id": "frontend_tests",
+            "counts": {
+              "tests": 46,
+              "failures": 0,
+              "errors": 0,
+              "skipped": 0,
+              "passed": 46
+            },
+            "collected_tests": 46,
+            "hashes": {
+              "xml": "6f9462a5ba238bb5bb0822afc0cbf145d183cb42f31db2931edb0a46c597e531",
+              "json": "8fb804fadc88bc7c3b7da42f972caa0fd2f142825df54d204ede300c37819050",
+              "collected": "91cac2b0ea9017e7dc51f2b32afd7c3e3228129c168836599528b61b06bf0eb8"
+            },
+            "classification": "rendered React unit tests with controlled HTTP"
+          },
+          {
+            "id": "browser_tests",
+            "counts": {
+              "tests": 31,
+              "failures": 0,
+              "errors": 0,
+              "skipped": 0,
+              "passed": 31
+            },
+            "collected_tests": 31,
+            "hashes": {
+              "xml": "6b52bafede78e7300fec1c30e41963225837b66b0f9c7083d1815f3f9b7a6595",
+              "json": "60403fa6aa4c46dc91c44293130c8324835d0f222edb3c923c63bbcfa49dd2af",
+              "collected": "3ae5062af6f512bdd806b54efebe4e2bec37260838b611b9a48cf544969f57bc"
+            },
+            "classification": "Chromium UI; demo and controlled production HTTP"
+          }
+        ]
+      },
+      {
+        "job": "production-e2e",
+        "commit": "6aa3570ecfa6f662d99a5ffccbfc5d6d5346b630",
+        "run_url": "https://github.com/shengxian08/it-operations-agent/actions/runs/37100100559",
+        "summary_sha256": "805c38c9d3faa9acd9e59d928585f464eb82f2cf1691518d372ad71d56dafd12",
+        "reports": [
+          {
+            "id": "production_tests",
+            "counts": {
+              "tests": 2,
+              "failures": 0,
+              "errors": 0,
+              "skipped": 0,
+              "passed": 2
+            },
+            "collected_tests": 2,
+            "hashes": {
+              "xml": "c3d6128d45b6ee30c36e776d423cb42a1b5f9876c86270be7b54aea5d3550dbe",
+              "json": "e5e8a240a7cb51b7e86bd6c711f9e7937cfe7fc377b0a40a4a1e2a55e76f5b61",
+              "collected": "7496b5c4e97eff07a14eae0e467aeea814b174ba10e065e012a47d94f1840dcb"
+            },
+            "classification": "isolated Keycloak/PG/Redis/Qdrant/API/worker; Mock model, not enterprise or target Linux acceptance"
+          }
+        ]
+      }
+    ],
+    "artifacts": [
+      {
+        "id": 11265724146,
+        "name": "immutable-images-6aa3570ecfa6f662d99a5ffccbfc5d6d5346b630",
+        "bytes": 439832158,
+        "digest_reported_by_GitHub": "sha256:4f3e72963ec91a37713a48c642d2aa8de5e8d6c02ceadce66ac53de3e5e44e0f",
+        "url": "https://github.com/shengxian08/it-operations-agent/actions/runs/37100100559/artifacts/11265724146"
+      },
+      {
+        "id": 11265723698,
+        "name": "backend-evidence-6aa3570ecfa6f662d99a5ffccbfc5d6d5346b630",
+        "bytes": 1266,
+        "digest_reported_by_GitHub": "sha256:40d06840bf3c48f4ac53a2e9458cddd43ccb8ee20a1d6d7a5465301d29e6ca23",
+        "url": "https://github.com/shengxian08/it-operations-agent/actions/runs/37100100559/artifacts/11265723698"
+      },
+      {
+        "id": 11265718593,
+        "name": "frontend-evidence-6aa3570ecfa6f662d99a5ffccbfc5d6d5346b630",
+        "bytes": 1090,
+        "digest_reported_by_GitHub": "sha256:63df26e9890a884d0b35dcbc377bb55da238c638981273d8e546d536c43fe3be",
+        "url": "https://github.com/shengxian08/it-operations-agent/actions/runs/37100100559/artifacts/11265718593"
+      },
+      {
+        "id": 11265359456,
+        "name": "production-e2e-evidence-6aa3570ecfa6f662d99a5ffccbfc5d6d5346b630",
+        "bytes": 764,
+        "digest_reported_by_GitHub": "sha256:64b18fff8ef571b2ead1dbf5bdeb7bc53870bef4bcc36dd77e89a1b2c7edcc29",
+        "url": "https://github.com/shengxian08/it-operations-agent/actions/runs/37100100559/artifacts/11265359456"
+      }
+    ],
+    "image_package_checks": "actual CI installed-package/source comparisons completed successfully",
+    "whole_image_tar_independently_downloaded_and_rehashed": false,
+    "post_record_changes": "publication documentation and small existing image-metadata artifact only; new exact-commit CI will execute",
+    "real_T06_T07": "unverified; approved inputs and target missing"
+  },
   "real_T06_T07": "unverified; approved inputs and target missing",
   "historical_T05_stage": {
     "stage": "T05 author local business validation",

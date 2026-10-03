@@ -16,7 +16,7 @@
 | T07 目标环境发布门禁 | P1 / 环境阻塞 | OPS-001 | 按现有生产手册跑批准目标Linux环境；不扩大为新架构 | 真实身份全栈、新版PDF、30分钟容量/P95、完整空环境恢复与RPO/RTO、备份外部副本、实际receiver接收、同schema旧镜像回滚；镜像与报告来源一致 |
 | T08 来源型 Markdown | P1 / 完成软件合同，私有质量未验 | MD-001～008 | 真实章节/source spans、完整原子代码、真实token预算、新旧版本/逐篇审批、管理员与员工预览 | [实施报告](architecture/markdown-structure.md)；真实PG/Qdrant、离线固定BGE与仓库33篇资料、Mock HTTP浏览器分开留证；私有文档/真实答案不计已验 |
 
-T02 的“上一单”只能引用服务端受控会话对象，不能通过用户发来的任意 history 获得访问权；T04 持久引用只保存身份并在读取时重新鉴权；T05 则同时约束当前与原进度快照权限，并保持原始持久答案。业务对象均为工单。T03/T04/T05已分别完成作者本机软件合同；整个增量的一次独立审查发现5项Important，作者一次修复及最终615后端/46前端/30浏览器全量通过，0 failures/errors/skipped，原13项反例由作者重跑通过，没有第二轮独立批准。T06/T07及GitHub实际交付仍未完成，不以本机或Mock替代。
+T02 的“上一单”只能引用服务端受控会话对象，不能通过用户发来的任意 history 获得访问权；T04 持久引用只保存身份并在读取时重新鉴权；T05 则同时约束当前与原进度快照权限，并保持原始持久答案。业务对象均为工单。T03/T04/T05已分别完成作者本机软件合同；整个增量的一次独立审查发现5项Important，作者一次修复及最终615后端/46前端/30浏览器全量通过，0 failures/errors/skipped，原13项反例由作者重跑通过，没有第二轮独立批准。GitHub软件提交6aa3570已正常推送且616后端/46前端/31Mock浏览器/2真实协议E2E和镜像实际通过，见[交付记录](verification/github-delivery.md)；最终文档/小型metadata制品继续核对，T06/T07真实门禁保持未完成。
 
 T06 只有实际失败样本证明现有布局策略不足后，才比较 Docling、Unstructured 或 OCR。比较维度是表头与单元格保真、条件/单位/注释、页表行来源、拒绝未知布局、CPU/内存/耗时、模型下载与离线部署；不要只比较输出字符数量。
 
@@ -42,4 +42,4 @@ Markdown 场景的 Mock tokenizer/HTTP、真实公开BGE、仓库seed与合成co
 
 ## 最终审查修复
 
-R1知识回放权限与全部prompt来源、R2交接锁等待期间撤权、R3无可信来源的历史助手文本、R4普通取消及引文保留、R5完整收集/执行报告，5项Important已由作者一次复现修复并最终全量通过。问题合同、原审查分类与可执行验收见[最终审查](verification/final-review.md)；公开615/46/30报告hash见[软件摘要](verification/software-validation.json)。原ready: No与失败报告留存，没有第二轮独立批准。GitHub实际CI/production-live/commit镜像以及T06/T07真实门禁不由这份本机报告关闭。
+R1知识回放权限与全部prompt来源、R2交接锁等待期间撤权、R3无可信来源的历史助手文本、R4普通取消及引文保留、R5完整收集/执行报告，5项Important已由作者一次复现修复并最终全量通过。问题合同、原审查分类与可执行验收见[最终审查](verification/final-review.md)；公开615/46/30报告hash见[软件摘要](verification/software-validation.json)。原ready: No与失败报告留存，没有第二轮独立批准。GitHub实际CI/production-live/commit镜像已按[交付记录](verification/github-delivery.md)分别执行通过；T06/T07真实门禁继续未验。

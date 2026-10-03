@@ -251,3 +251,14 @@ jobs:
           path: output/images/
           compression-level: 0
           retention-days: 14
+      - name: Save small image verification metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: immutable-image-metadata-${{ github.sha }}
+          path: |
+            output/images/image-manifest.json
+            output/images/api-package-verification.json
+            output/images/worker-package-verification.json
+            output/images/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14

@@ -22,7 +22,8 @@
 - [ ] T07：批准Linux与真实企业身份/TLS、新版知识、30分钟容量/P95、完整空环境恢复/RPO/RTO/外部备份、同schema回滚、实际receiver接收。缺目标不能按本机通过完成。
 - [x] 统一作者验收：显式TEST URL、真实隔离依赖、后端全量/前端/build/浏览器/静态/锁，读取tests/passed/failures/errors/skipped；发布准备最终569后端/46前端/30浏览器均passed、0 failures/errors/skipped；真实API、受控身份与Mock浏览器分别标注。
 - [x] 唯一最终独立审查：319文件候选与before/current精确增量已审查，137重点回归通过、13反例失败归为5项Important；作者一次RED→GREEN及最终615后端/46前端/30浏览器通过，0 failures/errors/skipped，原13反例由作者重跑全部通过。原ready: No保留，没有第二轮独立批准；详见[修复记录](../../verification/final-review.md)。
-- [ ] 项目推送：分逻辑提交经过检查的明确文件集，不混入临时/私有内容；正常推送origin，验证远端commit/tree与GitHub Actions实际结果，生成可下载项目与可公开验收索引。
+- [x] 项目源码推送与软件CI：五组明确逻辑提交及两项CI测试修正正常push origin，远端6aa3570/tree一致，616后端/46前端/31Mock浏览器/2真实协议E2E及三份镜像实际通过，公开[交付记录](../../verification/github-delivery.md)保存精确run与制品。
+- [ ] 最后归档提交：公开交付文档与小型既有镜像metadata单独制品，核对该提交实际CI、标签/包记录/CI校验和及最终canonical源码ZIP；不称本机已完整重算镜像tar。
 - [ ] 全目标完成审计：逐项核对上述业务、真实门禁及GitHub交付，不将剩余环境阻塞重新命名为完成。
 
 ## Review Focus

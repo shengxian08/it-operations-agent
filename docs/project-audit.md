@@ -195,3 +195,10 @@
 最终作者实际报告：615后端、46前端、30 demo/production-mock浏览器passed，failures/errors/skipped均0；615唯一收集身份、0 deselected/collection errors。原13反例逐字节复制到新留存目录后作者重跑13passed，原失败证据不覆盖。21评估逻辑、157取消相关和51门禁为重复子集，不累加总数。构建/Ruff/锁/迁移一致性通过，原6只读探针输入保持不变。报告hash与类别见[安全机器摘要](verification/software-validation.json)，原证据和before/current/diff留在本地`artifacts/remaining-tasks/final-fixes/`。
 
 先前611全量中的环境失败报告保留：572passed、4failures、35errors、0skipped；只读核查确认已被外部停止的tmpfs测试服务重启后public schema为空。该报告不计软件通过或产品RED；仅在现有可丢弃测试库upgrade head到0006后重新执行最终全量。没有共享/生产down、recreate、downgrade、清理、模型付费或企业文件上传。T06/T07真实门禁、GitHub精确提交的实际CI/镜像仍须分别执行与记录。
+
+
+## 2026-10-03 GitHub 实际软件交付
+
+完整项目按明确清单正常推送codex/production-engineering，远端软件提交6aa3570ecfa6f662d99a5ffccbfc5d6d5346b630与tree一致，GitHub run37100100559四任务success：616后端、46前端、31Mock浏览器、2真实协议E2E通过，0 failures/errors/skipped，收集/执行身份一致且源码干净。三份commit镜像构建及安装wheel/源码比较实际通过。原两轮失败、CI-001 fixture继承HTTP cookie与CI-002状态卡定位的场景/根因/修复/实际验收见[GitHub交付记录](verification/github-delivery.md)，源码和质量阈值的原合同保留。
+
+公开本次归档增加独立小型镜像metadata制品，最后提交仍须实际CI核对。约440MB镜像完整下载因低速中止，范围读取也未完成；没有宣称本机完整tar重算通过，原partial下载保留为未验证。原始报告/trace/model上下文留本地或runner，公开仅计数/hash/精确提交与受控截图。T06/T07批准真实输入与目标仍缺失，完整目标未完成，未部署、未推外部registry、未使用真实付费模型或生产数据。
