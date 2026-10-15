@@ -1,0 +1,70 @@
+{
+  "schema_version": 2,
+  "evidence_tier": "scripted",
+  "strategy_summaries": [
+    {
+      "strategy": "A",
+      "tasks": 120,
+      "runs": 360,
+      "stable_control_tasks": 120,
+      "critical_violations": 0,
+      "p95_control_elapsed_ms": 3.497,
+      "model_task_success_rate": null,
+      "citation_support_rate": null,
+      "successful_task_cost": null
+    },
+    {
+      "strategy": "B",
+      "tasks": 120,
+      "runs": 360,
+      "stable_control_tasks": 120,
+      "critical_violations": 0,
+      "p95_control_elapsed_ms": 3.404,
+      "model_task_success_rate": null,
+      "citation_support_rate": null,
+      "successful_task_cost": null
+    },
+    {
+      "strategy": "C",
+      "tasks": 120,
+      "runs": 360,
+      "stable_control_tasks": 120,
+      "critical_violations": 0,
+      "p95_control_elapsed_ms": 7.059,
+      "model_task_success_rate": null,
+      "citation_support_rate": null,
+      "successful_task_cost": null
+    },
+    {
+      "strategy": "D",
+      "tasks": 120,
+      "runs": 360,
+      "stable_control_tasks": 120,
+      "critical_violations": 0,
+      "p95_control_elapsed_ms": 6.801,
+      "model_task_success_rate": null,
+      "citation_support_rate": null,
+      "successful_task_cost": null
+    }
+  ],
+  "real_model_quality": "unverified",
+  "adoption": {
+    "default": "single",
+    "complex_strategy": "experimental",
+    "reason": "No independent real-model task and citation review; the quality/cost/latency gates remain unverified"
+  },
+  "label_status": "Public synthetic task contract set. No claim of independent human relevant-set labels.",
+  "metadata": {
+    "code_commit": "1cdb3e612114652235c1f054d8fe4dcf5c85f288",
+    "working_tree_dirty": false,
+    "code_sha256": "b4da49fd80fa6a9fa376cff2688d959e88aa0143441c291aa9e4663aa500c8cd",
+    "dataset_sha256": "c6e1ff45bd003edfabaa23e66a4b4bd8f899dcfe19ac40a23b797b7e072b1774",
+    "tool_contract_version": "2026-10-04-v1",
+    "prompt_version": "task-decisions-2026-10-04-v1",
+    "data_version": "synthetic-task-v1",
+    "mcp_sdk": "2.3.0",
+    "python": "3.14.3",
+    "model": "adapter must record exact provider/model/revision",
+    "knowledge_version": "adapter must record per-observation revisions"
+  }
+}

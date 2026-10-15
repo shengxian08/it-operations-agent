@@ -2,7 +2,7 @@ import asyncio
 from builtins import Exception
 import time
 from collections.abc import AsyncIterator
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 from sqlalchemy import select
@@ -63,25 +63,63 @@ class ChatService:
         ticket_service: TicketService,
     ) -> None:
         self._session_factory = session_factory
-        self._graph_dependencies = GraphDependencies(
-            retriever=graph_dependencies.retriever,
-            chat_provider=ObservableChatProvider(graph_dependencies.chat_provider),
-            ticket_service=graph_dependencies.ticket_service,
-            user_access_level=graph_dependencies.user_access_level,
-            minimum_evidence_score=graph_dependencies.minimum_evidence_score,
-            require_structured_citations=graph_dependencies.require_structured_citations,
+        observed = ObservableChatProvider(graph_dependencies.chat_provider)
+        agentic = graph_dependencies.agentic_retriever
+        if agentic is not None:
+            from app.agent.agentic_rag import AgenticRetriever
+
+            agentic = AgenticRetriever(
+                agentic.retriever,
+                observed,
+                source_reader=agentic.source_reader,
+                minimum_score=agentic.minimum_score,
+            )
+        investigator = graph_dependencies.investigator
+        if investigator is not None:
+            from app.agent.investigation import Investigator
+
+            investigator = Investigator(
+                observed,
+                investigator.tools,
+                strategy=investigator.strategy,
+                transport=investigator.transport,
+            )
+        self._graph_dependencies = replace(
+            graph_dependencies,
+            chat_provider=observed,
+            agentic_retriever=agentic,
+            investigator=investigator,
         )
         self._ticket_service = ticket_service
         self._runs = AgentRunRepository(session_factory)
 
-    async def stream_run(self, *, user_id: str, conversation_id: str, content: str,
-                         trace_id: str, run_id: str, history: list[dict[str, str]], lease_token: str | None = None,
-                         ticket_context: dict[str, Any] | None = None,
-                         ticket_intake_context: dict[str, Any] | None = None) -> AsyncIterator[ChatEvent]:
+    async def stream_run(
+        self,
+        *,
+        user_id: str,
+        conversation_id: str,
+        content: str,
+        trace_id: str,
+        run_id: str,
+        history: list[dict[str, str]],
+        lease_token: str | None = None,
+        ticket_context: dict[str, Any] | None = None,
+        ticket_intake_context: dict[str, Any] | None = None,
+        task_mode="support",
+        on_agent_progress=None,
+    ) -> AsyncIterator[ChatEvent]:
         """Execute a durable job; the caller owns all business persistence and leases."""
-        state: dict[str, Any] = {"user_id":user_id, "conversation_id":conversation_id,
-                                 "message":content, "step_count":0, "trace_id":trace_id,
-                                 "history":history,"run_id":run_id,"lease_token":lease_token}
+        state: dict[str, Any] = {
+            "user_id": user_id,
+            "conversation_id": conversation_id,
+            "message": content,
+            "step_count": 0,
+            "trace_id": trace_id,
+            "history": history,
+            "run_id": run_id,
+            "lease_token": lease_token,
+            "task_mode": task_mode,
+        }
         if ticket_context is not None:
             state["ticket_context"] = ticket_context
         if ticket_intake_context is not None:
@@ -90,8 +128,10 @@ class ChatService:
         uncertain = False
         model: str | None = None
         with bind_run(trace_id, run_id):
-            yield ChatEvent("run_started", {"run_id":run_id})
-            graph = build_graph(self._graph_dependencies)
+            yield ChatEvent("run_started", {"run_id": run_id})
+            graph = build_graph(
+                replace(self._graph_dependencies, on_agent_progress=on_agent_progress)
+            )
             node_started_ns = time.time_ns()
             node_started = time.perf_counter()
             async for updates in graph.astream(state, stream_mode="updates"):
@@ -102,33 +142,91 @@ class ChatService:
                     total_output += usage.output_tokens
                     uncertain = uncertain or usage.usage_uncertain
                     model = usage.model or model
-                    latency_ms=int((time.perf_counter()-node_started)*1000)
-                    record_node_span(node=node, started_ns=node_started_ns,
+                    latency_ms = int((time.perf_counter() - node_started) * 1000)
+                    record_node_span(
+                        node=node,
+                        started_ns=node_started_ns,
                         latency_ms=latency_ms,
-                        result_category="error" if update.get("error") else str(update.get("final_state") or "completed"),
-                        usage=usage)
+                        result_category="error"
+                        if update.get("error")
+                        else str(update.get("final_state") or "completed"),
+                        usage=usage,
+                    )
                     node_started_ns, node_started = time.time_ns(), time.perf_counter()
-                    yield ChatEvent("node_completed", {"node":node,"step_count":state.get("step_count",0),"latency_ms":latency_ms})
+                    yield ChatEvent(
+                        "node_completed",
+                        {
+                            "node": node,
+                            "step_count": state.get("step_count", 0),
+                            "latency_ms": latency_ms,
+                        },
+                    )
             citations = [asdict(c) for c in state.get("citations", [])]
+            budget = state.get("_task_budget")
+            if budget:
+                total_input, total_output = budget.input_tokens, budget.output_tokens
+                uncertain = budget.usage_uncertain
+                model = ",".join(sorted(budget.models)) or None
             final_state = state.get("final_state", "handoff")
             if final_state != "awaiting_confirmation":
                 state.pop("ticket_draft", None)
                 state.pop("confirmation_token", None)
-            knowledge_context = {"knowledge_context": state["knowledge_context"]} if "knowledge_context" in state else {}
-            yield ChatEvent("citations", {"citations":citations, **knowledge_context})
+            knowledge_context = (
+                {"knowledge_context": state["knowledge_context"]}
+                if "knowledge_context" in state
+                else {}
+            )
+            yield ChatEvent("citations", {"citations": citations, **knowledge_context})
             draft = state.get("ticket_draft")
             if isinstance(draft, TicketDraft) and state.get("confirmation_token"):
-                yield ChatEvent("ticket_draft", {"draft":draft.model_dump(mode="json"),"confirmation_token":state["confirmation_token"]})
+                yield ChatEvent(
+                    "ticket_draft",
+                    {
+                        "draft": draft.model_dump(mode="json"),
+                        "confirmation_token": state["confirmation_token"],
+                    },
+                )
             if state.get("handoff_reason"):
-                yield ChatEvent("handoff", {"reason":state["handoff_reason"]})
-            yield ChatEvent("final", {"run_id":run_id,"answer":state.get("answer","处理失败，请联系IT支持。"),
-                                       "final_state":final_state,"citations":citations,
-                                       **knowledge_context,
-                                       "handoff_reason":state.get("handoff_reason"),
-                                       "error":state.get("error"),
-                                       **({"ticket_lookup": state["ticket_lookup"]} if "ticket_lookup" in state else {}),
-                                       **({"ticket_intake": state["ticket_intake"]} if "ticket_intake" in state else {}),
-                                       "usage":{"input_tokens":total_input,"output_tokens":total_output,"model":model,"usage_uncertain":uncertain}})
+                yield ChatEvent("handoff", {"reason": state["handoff_reason"]})
+            yield ChatEvent(
+                "final",
+                {
+                    "run_id": run_id,
+                    "answer": state.get("answer", "处理失败，请联系IT支持。"),
+                    "final_state": final_state,
+                    "citations": citations,
+                    **knowledge_context,
+                    "handoff_reason": state.get("handoff_reason"),
+                    "error": state.get("error"),
+                    **(
+                        {
+                            k: state[k]
+                            for k in (
+                                "agent_trace",
+                                "agent_budget",
+                                "investigation_report",
+                            )
+                            if k in state
+                        }
+                    ),
+                    **(
+                        {"ticket_lookup": state["ticket_lookup"]}
+                        if "ticket_lookup" in state
+                        else {}
+                    ),
+                    **(
+                        {"ticket_intake": state["ticket_intake"]}
+                        if "ticket_intake" in state
+                        else {}
+                    ),
+                    "usage": {
+                        "input_tokens": total_input,
+                        "output_tokens": total_output,
+                        "model": model,
+                        "usage_uncertain": uncertain,
+                    },
+                },
+            )
 
     async def stream_message(
         self,
@@ -156,9 +254,7 @@ class ChatService:
         }
         finalized = False
         try:
-            yield ChatEvent(
-                "run_started", {"run_id": run_id, "message_id": message_id}
-            )
+            yield ChatEvent("run_started", {"run_id": run_id, "message_id": message_id})
             with bind_run(trace_id, run_id):
                 async for event in self._process_run(
                     run_id=run_id,
@@ -191,18 +287,30 @@ class ChatService:
         try:
             try:
                 async with self._session_factory() as session:
-                    state["ticket_context"] = await load_ticket_context(session, state["user_id"], conversation_id,
-                                                                        run_id, production=False)
-                    state["ticket_intake_context"] = await load_ticket_intake_context(session, state["user_id"], conversation_id,
-                                                                                      run_id, production=False)
+                    state["ticket_context"] = await load_ticket_context(
+                        session,
+                        state["user_id"],
+                        conversation_id,
+                        run_id,
+                        production=False,
+                    )
+                    state["ticket_intake_context"] = await load_ticket_intake_context(
+                        session,
+                        state["user_id"],
+                        conversation_id,
+                        run_id,
+                        production=False,
+                    )
                 graph = build_graph(self._graph_dependencies)
                 async for updates in graph.astream(state, stream_mode="updates"):
                     for node_name, update in updates.items():
                         node_finished = time.perf_counter()
                         state.update(update)
-                        latency_ms = max(0, int((node_finished - started_at) * 1000) - sum(
-                            int(item["latency_ms"]) for item in node_history
-                        ))
+                        latency_ms = max(
+                            0,
+                            int((node_finished - started_at) * 1000)
+                            - sum(int(item["latency_ms"]) for item in node_history),
+                        )
                         usage = consume_model_usage()
                         result_category = self._node_result_category(update)
                         document_ids = self._document_ids(update)
@@ -215,8 +323,16 @@ class ChatService:
                                 "model": usage.model,
                                 "input_tokens": usage.input_tokens,
                                 "output_tokens": usage.output_tokens,
-                                **({"ticket_lookup": update["ticket_lookup"]} if "ticket_lookup" in update else {}),
-                                **({"ticket_intake": update["ticket_intake"]} if "ticket_intake" in update else {}),
+                                **(
+                                    {"ticket_lookup": update["ticket_lookup"]}
+                                    if "ticket_lookup" in update
+                                    else {}
+                                ),
+                                **(
+                                    {"ticket_intake": update["ticket_intake"]}
+                                    if "ticket_intake" in update
+                                    else {}
+                                ),
                             }
                         )
                         record_node_span(
@@ -230,16 +346,17 @@ class ChatService:
                         )
                         yield ChatEvent(
                             "node_completed",
-                            {"node": node_name, "step_count": state.get("step_count", 0)},
+                            {
+                                "node": node_name,
+                                "step_count": state.get("step_count", 0),
+                            },
                         )
             except asyncio.CancelledError:
                 raise
             except Exception:
                 self._set_handoff(state, "processing_failed")
 
-            citations = [
-                asdict(citation) for citation in state.get("citations", [])
-            ]
+            citations = [asdict(citation) for citation in state.get("citations", [])]
             total_usage = self._total_usage(node_history)
             draft = state.get("ticket_draft")
             confirmation_token = state.get("confirmation_token")
@@ -318,8 +435,16 @@ class ChatService:
                 "message_id": state.get("_assistant_message_id"),
                 "answer": state["answer"],
                 "final_state": state["final_state"],
-                **({"ticket_lookup": state["ticket_lookup"]} if "ticket_lookup" in state else {}),
-                **({"ticket_intake": state["ticket_intake"]} if "ticket_intake" in state else {}),
+                **(
+                    {"ticket_lookup": state["ticket_lookup"]}
+                    if "ticket_lookup" in state
+                    else {}
+                ),
+                **(
+                    {"ticket_intake": state["ticket_intake"]}
+                    if "ticket_intake" in state
+                    else {}
+                ),
             },
         )
 
@@ -475,5 +600,7 @@ class ChatService:
         return ModelUsage(
             model=models[-1] if models else None,
             input_tokens=sum(int(item.get("input_tokens", 0)) for item in node_history),
-            output_tokens=sum(int(item.get("output_tokens", 0)) for item in node_history),
+            output_tokens=sum(
+                int(item.get("output_tokens", 0)) for item in node_history
+            ),
         )

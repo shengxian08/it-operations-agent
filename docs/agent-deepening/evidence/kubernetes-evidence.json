@@ -1,0 +1,124 @@
+{
+  "tier": "real-services",
+  "data_classification": "public-synthetic",
+  "model_quality": "unverified",
+  "observations": [
+    {
+      "id": "9249bdd83bc64c7c939ed6dc7cc93702",
+      "tool": "get_service_health",
+      "status": "ok",
+      "observed_at": "2026-10-03T22:34:22.109026Z",
+      "origin": "live",
+      "snapshot_id": null,
+      "knowledge_revision": null,
+      "resource": "checkout",
+      "data": {
+        "desired_replicas": 2,
+        "ready_replicas": 2,
+        "deployment_available": true,
+        "endpoint_reachability": "unknown",
+        "namespace": "agent-deepening"
+      },
+      "error_code": null
+    },
+    {
+      "id": "8158b92a737043a3bc5fe687ba841c17",
+      "tool": "query_error_logs",
+      "status": "ok",
+      "observed_at": "2026-10-03T22:34:22.402719Z",
+      "origin": "live",
+      "snapshot_id": null,
+      "knowledge_revision": null,
+      "resource": "checkout",
+      "data": {
+        "items": [],
+        "truncated": false,
+        "coverage": "last_100_lines_per_pod_max_3_pods"
+      },
+      "error_code": null
+    },
+    {
+      "id": "bde1a6cffb754e3ba5f35dc110c9afc0",
+      "tool": "get_release_changes",
+      "status": "ok",
+      "observed_at": "2026-10-03T22:34:22.495047Z",
+      "origin": "live",
+      "snapshot_id": null,
+      "knowledge_revision": null,
+      "resource": "checkout",
+      "data": {
+        "items": [
+          {
+            "at": "2026-10-03T22:23:29+00:00",
+            "revision": "16",
+            "images": [
+              "agent-deepening-commerce:20261004-v10"
+            ],
+            "source": "replicaset_creation"
+          },
+          {
+            "at": "2026-10-03T22:32:50+00:00",
+            "revision": "18",
+            "images": [
+              "agent-deepening-commerce:20261004-v11"
+            ],
+            "source": "replicaset_creation"
+          },
+          {
+            "at": "2026-10-03T22:15:31+00:00",
+            "revision": "17",
+            "images": [
+              "agent-deepening-commerce:20261004-v10"
+            ],
+            "source": "replicaset_creation"
+          }
+        ],
+        "truncated": false
+      },
+      "error_code": null
+    },
+    {
+      "id": "595d0a0b93e74362bed1ff124db53001",
+      "tool": "query_metrics",
+      "status": "unknown",
+      "observed_at": "2026-10-03T22:34:22.495244Z",
+      "origin": "snapshot",
+      "snapshot_id": null,
+      "knowledge_revision": null,
+      "resource": null,
+      "data": {},
+      "error_code": "tool_unavailable"
+    },
+    {
+      "id": "55d6e786b84c4c499e30f8e2156d6fdb",
+      "tool": "query_metrics",
+      "status": "ok",
+      "observed_at": "2026-10-03T22:34:22.571414Z",
+      "origin": "live",
+      "snapshot_id": null,
+      "knowledge_revision": null,
+      "resource": "checkout",
+      "data": {
+        "items": [
+          {
+            "at": "2026-10-03T22:34:22.571414+00:00",
+            "metric": "availability",
+            "value": 1.0,
+            "unit": "ready_replica_ratio"
+          }
+        ],
+        "history_available": false,
+        "truncated": false
+      },
+      "error_code": null
+    }
+  ],
+  "budget": {
+    "tool_calls": 5,
+    "model_calls": 0,
+    "reserved_token_upper_bound": 0,
+    "observed_tokens": 0,
+    "cancelled": false,
+    "usage_uncertain": false
+  }
+}

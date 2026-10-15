@@ -1,0 +1,29 @@
+{
+  "snapshot_id": "public-synthetic-operations-20261001-v1",
+  "data_classification": "synthetic",
+  "services": {
+    "checkout": {
+      "observed_at": "2026-10-01T08:30:00Z",
+      "health": {"reachable": false, "status": "unavailable"},
+      "logs": [
+        {"at": "2026-10-01T08:15:00Z", "level": "error", "message": "Database connection pool exhausted", "release": "v2.1"},
+        {"at": "2026-10-01T08:25:00Z", "level": "error", "message": "Readiness failed", "release": "v2.1"}
+      ],
+      "metrics": [
+        {"at": "2026-10-01T08:00:00Z", "metric": "error_rate", "value": 0.01, "unit": "ratio"},
+        {"at": "2026-10-01T08:20:00Z", "metric": "error_rate", "value": 0.4, "unit": "ratio"},
+        {"at": "2026-10-01T08:20:00Z", "metric": "latency_ms", "value": 2500, "unit": "ms"}
+      ],
+      "changes": [
+        {"at": "2026-10-01T08:10:00Z", "version": "v2.1", "previous_version": "v2.0", "summary": "Synthetic database pool configuration change; causality unverified"}
+      ]
+    },
+    "catalog": {
+      "observed_at": "2026-10-01T08:30:00Z",
+      "health": {"reachable": true, "status": "healthy"},
+      "logs": [],
+      "metrics": [{"at": "2026-10-01T08:20:00Z", "metric": "error_rate", "value": 0, "unit": "ratio"}],
+      "changes": []
+    }
+  }
+}

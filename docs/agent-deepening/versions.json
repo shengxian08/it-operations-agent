@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "project": "it",
+  "generated_at": "2026-10-03T22:45:16.807367+00:00",
+  "baseline": {
+    "source": "D:\\wendangjiexi",
+    "head": "293b37b2f1393260b7b021396918713134a9c701",
+    "branch": "codex/production-engineering",
+    "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "excluded_generated": [],
+    "snapshot_commit": "293b37b2f1393260b7b021396918713134a9c701"
+  },
+  "code": {
+    "code_commit": "04a1609c990754961fa2f598e42a92141e7d5d6d",
+    "working_tree_dirty": false,
+    "code_sha256": "b4da49fd80fa6a9fa376cff2688d959e88aa0143441c291aa9e4663aa500c8cd",
+    "dataset_sha256": "c6e1ff45bd003edfabaa23e66a4b4bd8f899dcfe19ac40a23b797b7e072b1774",
+    "tool_contract_version": "2026-10-04-v1",
+    "prompt_version": "task-decisions-2026-10-04-v1",
+    "data_version": "synthetic-task-v1",
+    "mcp_sdk": "2.3.0",
+    "python": "3.14.3",
+    "model": "adapter must record exact provider/model/revision",
+    "knowledge_version": "adapter must record per-observation revisions"
+  },
+  "acceptance": {
+    "count": 120,
+    "dataset_sha256": "c6e1ff45bd003edfabaa23e66a4b4bd8f899dcfe19ac40a23b797b7e072b1774",
+    "independent_human_review": "pending"
+  },
+  "evidence": [
+    {
+      "path": "evidence/protocol-evidence.json",
+      "sha256": "1ef4170d126cd0ce9b5b40b71b9f0f46a5c299a71cd1a8f3ba4bc4991d8c2705",
+      "bytes": 4517
+    },
+    {
+      "path": "evidence/browser-evidence.json",
+      "sha256": "fe284c4468cb89fc05f0d4a11ffa594e0197557023d5d8428cd140b780512868",
+      "bytes": 177
+    },
+    {
+      "path": "evidence/evaluation-report.json",
+      "sha256": "f218d3d012d5a0c6180eb5a64fd5738d2e41e4fce0979d9b9d668066cf4f33d4",
+      "bytes": 2296
+    },
+    {
+      "path": "evidence/kubernetes-evidence.json",
+      "sha256": "f10cc4bf930f4230b8fe0041927a0bcc28669c1d805072752124f5aea5a415ce",
+      "bytes": 3449
+    },
+    {
+      "path": "evidence/investigation-browser.png",
+      "sha256": "4f9e865080c63cfbe9c97752262fa18a99ea734acfe511b83d877baa3154f047",
+      "bytes": 277882
+    }
+  ],
+  "real_model_quality": "unverified"
+}

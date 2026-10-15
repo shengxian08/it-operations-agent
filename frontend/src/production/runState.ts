@@ -6,6 +6,8 @@ export function applyRunEvent(view: RunView, event: RunEvent): RunView {
   if (event.sequence <= view.sequence) return view;
   const next = { ...view, sequence: event.sequence, problem: null };
   switch (event.type) {
+    case "agent_progress": return { ...next, agentStage: event.stage, agentBudget: event.budget,
+      observations: event.access_redacted ? [] : event.observation ? [...(view.observations ?? []), event.observation].slice(-30) : view.observations };
     case "run_started": return { ...next, status: "running" };
     case "node_completed": return { ...next, steps: [...view.steps, { node: event.node, stepCount: event.step_count }] };
     case "citations": return { ...next, citations: event.citations };

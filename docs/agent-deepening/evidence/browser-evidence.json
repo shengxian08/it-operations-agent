@@ -1,0 +1,8 @@
+{
+  "tier": "real-services",
+  "model_quality": "unverified",
+  "investigation": "passed",
+  "snapshot_origin": "passed",
+  "reconnect": "passed",
+  "page_errors": []
+}

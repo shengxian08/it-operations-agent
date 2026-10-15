@@ -20,6 +20,19 @@ class Settings(BaseSettings):
     )
 
     model_mode: Literal["mock", "openai"] = "mock"
+    agentic_rag_enabled: bool = False
+    investigation_strategy: Literal["single", "multi"] = "single"
+    relation_retrieval_enabled: bool = False
+    agent_tool_limit: int = Field(default=12, ge=1, le=30)
+    agent_model_limit: int = Field(default=12, ge=1, le=30)
+    agent_token_limit: int = Field(default=48000, ge=1000, le=256000)
+    operations_snapshot_path: Path | None = None
+    operations_kubeconfig: Path | None = None
+    operations_kube_context: str | None = None
+    operations_kube_targets: dict[str, dict[str,str]] = Field(default_factory=dict)
+    operations_kubectl_binary: str = 'kubectl'
+    investigation_allowed_services: tuple[str, ...] = ("checkout", "catalog")
+    mcp_enabled: bool = False
     openai_base_url: HttpUrl | None = None
     openai_api_key: SecretStr | None = None
     openai_model: str | None = None
@@ -68,7 +81,9 @@ class Settings(BaseSettings):
     qdrant_api_key: SecretStr | None = None
     qdrant_read_api_key: SecretStr | None = None
     knowledge_storage_path: Path = Path("../data/production-knowledge")
-    knowledge_max_upload_bytes: int = Field(default=20 * 1024 * 1024, ge=1024, le=100 * 1024 * 1024)
+    knowledge_max_upload_bytes: int = Field(
+        default=20 * 1024 * 1024, ge=1024, le=100 * 1024 * 1024
+    )
     knowledge_max_pdf_pages: int = Field(default=100, ge=1, le=500)
     knowledge_parse_timeout_seconds: float = Field(default=30, ge=1, le=120)
     knowledge_index_timeout_seconds: float = Field(default=600, ge=30, le=1800)
@@ -86,12 +101,22 @@ class Settings(BaseSettings):
     @classmethod
     def read_secret_files(cls, values):
         values = dict(values)
-        for field in ("openai_api_key", "oidc_client_secret", "session_secret", "qdrant_api_key", "qdrant_read_api_key", "database_url", "redis_url"):
+        for field in (
+            "openai_api_key",
+            "oidc_client_secret",
+            "session_secret",
+            "qdrant_api_key",
+            "qdrant_read_api_key",
+            "database_url",
+            "redis_url",
+        ):
             secret_file = os.getenv(f"{field.upper()}_FILE")
             if secret_file and field not in values:
                 path = Path(secret_file)
                 if not path.is_file():
-                    raise ValueError(f"configured secret file for {field} is unavailable")
+                    raise ValueError(
+                        f"configured secret file for {field} is unavailable"
+                    )
                 values[field] = path.read_text(encoding="utf-8").strip()
         return values
 
@@ -108,8 +133,7 @@ class Settings(BaseSettings):
             return self
 
         has_api_key = bool(
-            self.openai_api_key
-            and self.openai_api_key.get_secret_value().strip()
+            self.openai_api_key and self.openai_api_key.get_secret_value().strip()
         )
         if not self.openai_base_url or not has_api_key or not self.openai_model:
             raise ValueError(
@@ -121,33 +145,73 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_environment(self) -> Self:
-        if self.environment == "development" and self.test_database_url and self.test_database_url == self.database_url:
+        if (
+            self.environment == "development"
+            and self.test_database_url
+            and self.test_database_url == self.database_url
+        ):
             raise ValueError("test_database_url must be isolated from database_url")
         if self.environment not in {"production", "staging"}:
             return self
         problems = []
         if self.demo_enabled or self.model_mode != "openai":
             problems.append("disable demo and configure an approved real model")
-        public=urlsplit(self.public_base_url)
-        issuer=urlsplit(self.oidc_issuer)
-        if (not self.cookie_secure or public.scheme != "https" or issuer.scheme != "https"
-            or not public.hostname or not issuer.hostname or public.username or issuer.username
-            or public.query or public.fragment or issuer.query or issuer.fragment or public.path not in {"","/"}):
+        public = urlsplit(self.public_base_url)
+        issuer = urlsplit(self.oidc_issuer)
+        if (
+            not self.cookie_secure
+            or public.scheme != "https"
+            or issuer.scheme != "https"
+            or not public.hostname
+            or not issuer.hostname
+            or public.username
+            or issuer.username
+            or public.query
+            or public.fragment
+            or issuer.query
+            or issuer.fragment
+            or public.path not in {"", "/"}
+        ):
             problems.append("HTTPS and Secure cookies are required")
-        if len(self.session_secret.get_secret_value()) < 32 or "development" in self.session_secret.get_secret_value() or not self.oidc_client_secret:
+        if (
+            len(self.session_secret.get_secret_value()) < 32
+            or "development" in self.session_secret.get_secret_value()
+            or not self.oidc_client_secret
+        ):
             problems.append("set non-demo session and OIDC secrets")
-        if "itops-local-only" in self.database_url or not urlsplit(self.database_url).password or not urlsplit(self.redis_url).password:
+        if (
+            "itops-local-only" in self.database_url
+            or not urlsplit(self.database_url).password
+            or not urlsplit(self.redis_url).password
+        ):
             problems.append("set authenticated database and Redis connections")
-        if (not self.qdrant_read_api_key or self.qdrant_api_key == self.qdrant_read_api_key
-            or (self.runtime_role == "worker" and not self.qdrant_api_key)):
-            problems.append("Qdrant read key is required; workers require a separate write key")
-        if (self.embedding_mode != "sentence-transformer" or self.embedding_model != "BAAI/bge-small-zh-v1.5"
-            or not re.fullmatch(r"[0-9a-f]{40}", self.embedding_revision)):
+        if (
+            not self.qdrant_read_api_key
+            or self.qdrant_api_key == self.qdrant_read_api_key
+            or (self.runtime_role == "worker" and not self.qdrant_api_key)
+        ):
+            problems.append(
+                "Qdrant read key is required; workers require a separate write key"
+            )
+        if (
+            self.embedding_mode != "sentence-transformer"
+            or self.embedding_model != "BAAI/bge-small-zh-v1.5"
+            or not re.fullmatch(r"[0-9a-f]{40}", self.embedding_revision)
+        ):
             problems.append("pin a semantic embedding model revision")
         if not self.openai_base_url or self.openai_base_url.scheme != "https":
             problems.append("approved model endpoint must use HTTPS")
-        if min(self.model_monthly_budget, self.model_input_price, self.model_output_price) <= 0:
-            problems.append("configure positive monthly budget and prices per million tokens")
+        if (
+            min(
+                self.model_monthly_budget,
+                self.model_input_price,
+                self.model_output_price,
+            )
+            <= 0
+        ):
+            problems.append(
+                "configure positive monthly budget and prices per million tokens"
+            )
         if self.test_database_url or self.test_redis_url or self.test_qdrant_url:
             problems.append("test service URLs must not be present")
         if problems:
@@ -157,4 +221,8 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings(_env_file=None) if os.getenv("ENVIRONMENT") in {"test", "production", "staging"} else Settings()
+    return (
+        Settings(_env_file=None)
+        if os.getenv("ENVIRONMENT") in {"test", "production", "staging"}
+        else Settings()
+    )

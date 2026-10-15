@@ -42,6 +42,19 @@ interface EventBase {
   trace_id: string;
 }
 
+export interface AgentObservation {
+  id: string; tool: string; status: "ok" | "unknown"; origin: "snapshot" | "live" | "knowledge" | "business";
+  observed_at: string; snapshot_id?: string | null; knowledge_revision?: string | null; resource?: string | null;
+  data: Record<string, unknown>; error_code?: string | null;
+}
+export interface AgentBudget { tool_calls: number; model_calls: number; reserved_token_upper_bound: number; observed_tokens: number; cancelled: boolean }
+export interface InvestigationReport {
+  goal: string; status: "partial" | "completed"; strategy: "single" | "multi"; observations: AgentObservation[];
+  conclusions: Array<{text: string; evidence_ids: string[]; verification: string}>;
+  hypotheses: Array<{text: string; evidence_ids: string[]; verification: string}>;
+  unknowns: string[]; conflicts: string[]; next_steps: string[]; budget: AgentBudget;
+}
+
 export interface TicketLookup {
   schema_version: 1;
   user_id: string;
@@ -54,6 +67,7 @@ export interface TicketLookup {
 }
 
 export type ChatEvent =
+  | (EventBase & { type: "agent_progress"; agent?: string; stage?: string; observation?: AgentObservation; budget?: AgentBudget; access_redacted?: boolean })
   | (EventBase & {
       type: "run_started";
       run_id: string;
@@ -86,6 +100,8 @@ export type ChatEvent =
       final_state: string;
       ticket_lookup?: TicketLookup;
       ticket_intake?: TicketIntake;
+      investigation_report?: InvestigationReport;
+      agent_budget?: AgentBudget;
       escalation_id?: string;
     });
 

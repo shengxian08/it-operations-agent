@@ -28,6 +28,7 @@ dependencies = [
     "redis>=5,<7",
     "sqlalchemy[asyncio]>=2.0,<3",
     "uvicorn[standard]>=0.30,<1",
+    "mcp==2.3.0",
 ]
 
 [project.optional-dependencies]
@@ -43,6 +44,9 @@ rag = [
 
 [tool.setuptools.packages.find]
 include = ["app*"]
+
+[tool.setuptools.package-data]
+app = ["data/*.json"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-markers"

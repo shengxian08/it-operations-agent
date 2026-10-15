@@ -50,7 +50,7 @@ export const api = {
   archiveConversation: (conversationId: string) => request<Conversation>(`/conversations/${id(conversationId)}/archive`, { method: "POST" }),
   messages: (conversationId: string, cursor?: string, signal?: AbortSignal) => request<{ messages: Message[] } & Cursor>(`/conversations/${id(conversationId)}/messages${query({ cursor })}`, { signal }),
   runs: (conversationId: string, signal?: AbortSignal) => request<{ runs: Run[] } & Cursor>(`/conversations/${id(conversationId)}/runs`, { signal }),
-  startRun: (conversationId: string, content: string, clientMessageId: string, key: string) => request<Run>(`/conversations/${id(conversationId)}/runs`, { method: "POST", headers: { "Idempotency-Key": key }, body: json({ content, client_message_id: clientMessageId }) }),
+  startRun: (conversationId: string, content: string, clientMessageId: string, key: string, taskMode?: "support" | "investigate") => request<Run>(`/conversations/${id(conversationId)}/runs`, { method: "POST", headers: { "Idempotency-Key": key }, body: json({ content, client_message_id: clientMessageId, ...(taskMode === "investigate" ? { task_mode: taskMode } : {}) }) }),
   run: (runId: string, signal?: AbortSignal) => request<Run>(`/runs/${id(runId)}`, { signal }),
   cancelRun: (runId: string) => request<Run>(`/runs/${id(runId)}/cancel`, { method: "POST" }),
   feedback: (messageId: string, feedback: MessageFeedback) => request<void>(`/messages/${id(messageId)}/feedback`, { method: "POST", body: json({ feedback }) }),
@@ -80,7 +80,7 @@ export const api = {
   activate: (revisionId: string) => request<{ revision_id: string; status: string }>(`/knowledge/revisions/${id(revisionId)}/activate`, { method: "POST" }),
 };
 
-const EVENT_NAMES = new Set(["run_started", "node_completed", "citations", "ticket_draft", "handoff", "final"]);
+const EVENT_NAMES = new Set(["agent_progress", "run_started", "node_completed", "citations", "ticket_draft", "handoff", "final"]);
 function parseEvent(block: string): RunEvent | null {
   let name = "", sequence = 0; const lines: string[] = [];
   for (const line of block.split("\n")) { if (line.startsWith("event:")) name = line.slice(6).trim(); if (line.startsWith("id:")) sequence = Number(line.slice(3).trim()); if (line.startsWith("data:")) lines.push(line.slice(5).trimStart()); }

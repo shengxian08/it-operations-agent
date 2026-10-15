@@ -4,8 +4,12 @@ from app.rag.retriever import Citation, RetrievalHit
 from app.schemas import TicketDraft
 
 
-AgentIntent = Literal["knowledge", "ticket_lookup", "ticket_create", "manual_handoff"]
+AgentIntent = Literal[
+    "knowledge", "ticket_lookup", "ticket_create", "manual_handoff", "investigation"
+]
 FinalState = Literal[
+    "knowledge_clarification",
+    "investigated",
     "answered",
     "ticket_status",
     "ticket_lookup_clarification",
@@ -42,6 +46,11 @@ class AgentState(TypedDict):
     ticket_intake_context: NotRequired[dict[str, Any]]
     ticket_intake: NotRequired[dict[str, Any]]
     knowledge_context: NotRequired[dict[str, Any]]
+    agent_trace: NotRequired[list[dict[str, Any]]]
+    agent_budget: NotRequired[dict[str, Any]]
+    task_mode: NotRequired[Literal["support", "investigate"]]
+    investigation_report: NotRequired[dict[str, Any]]
+    _task_budget: NotRequired[Any]
 
 
 class AgentStateUpdate(TypedDict, total=False):
@@ -69,3 +78,8 @@ class AgentStateUpdate(TypedDict, total=False):
     ticket_intake_context: dict[str, Any]
     ticket_intake: dict[str, Any]
     knowledge_context: dict[str, Any]
+    agent_trace: list[dict[str, Any]]
+    agent_budget: dict[str, Any]
+    task_mode: Literal["support", "investigate"]
+    investigation_report: dict[str, Any]
+    _task_budget: Any

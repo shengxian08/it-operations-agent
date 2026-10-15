@@ -1,4 +1,4 @@
-import type { ChatEvent, ChatMessage, Citation, RunStep, TicketDraft, TicketPriority } from "../types";
+import type { AgentObservation, AgentBudget, ChatEvent, ChatMessage, Citation, RunStep, TicketDraft, TicketPriority } from "../types";
 
 export type Role = "employee" | "support" | "admin";
 export interface ManagedAccount { id: string; display_name: string; role: Role; enabled: boolean; version: number }
@@ -10,7 +10,7 @@ export type FinalResult = Extract<ChatEvent, { type: "final" }> & { status?: Run
 export type RunEvent = (ChatEvent | (Extract<ChatEvent, { type: "ticket_draft" }> & { draft_id?: string; version?: number })) & { sequence: number };
 export interface StoredEvent { sequence: number; type: ChatEvent["type"]; data: Record<string, unknown>; created_at?: string }
 export interface Run { id: string; conversation_id?: string; status: RunStatus; trace_id: string; result: Omit<FinalResult, "type"> | null; events?: StoredEvent[]; created_at?: string; finished_at?: string }
-export interface RunView { id: string; sequence: number; status: RunStatus; steps: RunStep[]; citations: Citation[]; final: FinalResult | null; handoff: string | null; problem: string | null; escalationId?: string | null }
+export interface RunView { id: string; sequence: number; status: RunStatus; steps: RunStep[]; citations: Citation[]; final: FinalResult | null; handoff: string | null; problem: string | null; escalationId?: string | null; observations?: AgentObservation[]; agentStage?: string; agentBudget?: AgentBudget }
 export interface DraftRecord { id: string; draft_id?: string; conversation_id: string; run_id?: string | null; version: number; draft: TicketDraft; requires_details?: boolean; confirmation_token: string | null; ticket_number?: string | null; expires_at: string; status: string }
 export interface Ticket { id: string; ticket_number: string; user_id: string; title: string; category: string; priority: TicketPriority; description: string; attempted_steps: string[]; status: string; version: number; assignee_id: string | null; created_at: string; updated_at: string; comments?: TicketComment[]; audit?: AuditEntry[] }
 export interface TicketComment { id: string; author_id: string; content: string; visibility?: "public" | "internal" | "unclassified"; author_role?: string | null; created_at: string }

@@ -1,0 +1,362 @@
+{
+  "generated_at": "2026-10-03T22:45:16.807079+00:00",
+  "data_classification": "public-synthetic",
+  "model_quality": "unverified",
+  "log_index": [
+    {
+      "name": "baseline.log",
+      "sha256": "c2e96f86811f421d61bc3e489fd039007477c3adc7f039b50eef94e82aac54b5",
+      "result_lines": [
+        "1 failed, 615 passed in 105.61s (0:01:45)"
+      ],
+      "memory_interruption": false,
+      "bytes": 2135
+    },
+    {
+      "name": "browser-demo.log",
+      "sha256": "00e81beda140d3708e6407bcb586fb1e8af74b7901e0a5360ba6e8efb82ea4fa",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 5669
+    },
+    {
+      "name": "browser-demo2.log",
+      "sha256": "cab989319e79b8e49701868cad562e05333adf8fff543906c21049d6fa01d2a4",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 2611
+    },
+    {
+      "name": "browser-demo3.log",
+      "sha256": "3129a960cf19c1d6a2ca1ca33102351a5be5d703e799475e36c5bd757027151f",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 5547
+    },
+    {
+      "name": "browser-demo4.log",
+      "sha256": "c7c53350bc758aab58f597c9cd363f569f95cc4042afb035a7946c6ec437c566",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 4784
+    },
+    {
+      "name": "browser-demo5.log",
+      "sha256": "47c4bc55e5441b02d0119b95431122f5d63f118cbbdf778eac4f7dcdd8fdc3e5",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 2421
+    },
+    {
+      "name": "browser-demo6.log",
+      "sha256": "4d19d71a4e8583a9758ff6f3606e98de8482f00be618fa12be9f20b470874937",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 77
+    },
+    {
+      "name": "browser-final.log",
+      "sha256": "4d19d71a4e8583a9758ff6f3606e98de8482f00be618fa12be9f20b470874937",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 77
+    },
+    {
+      "name": "browser-reviewed.log",
+      "sha256": "4d19d71a4e8583a9758ff6f3606e98de8482f00be618fa12be9f20b470874937",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 77
+    },
+    {
+      "name": "demo-server-reviewed.log",
+      "sha256": "f0ab646202d11a815297d764429aa312c5438b41ab3b3752d08c94027fbf9908",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 10454
+    },
+    {
+      "name": "e2e-final.log",
+      "sha256": "260df31cca68c056ee6b49875237301cf5c640e40f81aa4459f848ac1486949a",
+      "result_lines": [
+        "31 passed (21.0s)"
+      ],
+      "memory_interruption": false,
+      "bytes": 5422
+    },
+    {
+      "name": "eval-controls.log",
+      "sha256": "9b8f85699829c3ff6d0b9ce0404fa199f88d228eb3c9f9bbb999e79ba49249d1",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 192
+    },
+    {
+      "name": "eval-final.log",
+      "sha256": "9b8f85699829c3ff6d0b9ce0404fa199f88d228eb3c9f9bbb999e79ba49249d1",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 192
+    },
+    {
+      "name": "eval-red.log",
+      "sha256": "88945ba5d326eb4c3473ab40a1d181712222a5ddf9924f86c197ba5785c34714",
+      "result_lines": [
+        "1 failed in 0.18s"
+      ],
+      "memory_interruption": false,
+      "bytes": 1548
+    },
+    {
+      "name": "eval-release.log",
+      "sha256": "9b8f85699829c3ff6d0b9ce0404fa199f88d228eb3c9f9bbb999e79ba49249d1",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 192
+    },
+    {
+      "name": "eval-reviewed-final.log",
+      "sha256": "9b8f85699829c3ff6d0b9ce0404fa199f88d228eb3c9f9bbb999e79ba49249d1",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 192
+    },
+    {
+      "name": "fence-red.log",
+      "sha256": "0a2729ac7aa9865c1dfb44d55699735fbe5acd4b8758073e1e9733c8fb78f9d2",
+      "result_lines": [
+        "1 failed, 5 deselected in 0.82s"
+      ],
+      "memory_interruption": false,
+      "bytes": 1151
+    },
+    {
+      "name": "frontend-build-final.log",
+      "sha256": "8b4003adf7ea15ab026dd5900255ea8a2b5c47d31f5e8d6648f6243c1b21a349",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 770
+    },
+    {
+      "name": "frontend-final.log",
+      "sha256": "2966f6f2677caaeeb3731bc86451bc59f60f04be3b6a735ac826af44f3dfd757",
+      "result_lines": [
+        "15 passed (15)",
+        "49 passed (49)"
+      ],
+      "memory_interruption": false,
+      "bytes": 333
+    },
+    {
+      "name": "frontend.log",
+      "sha256": "ef7b43ecae07b01cada50adfc693cd5bad8569c4185ae4ddbd5cb45b8cceef96",
+      "result_lines": [
+        "15 passed (15)",
+        "49 passed (49)"
+      ],
+      "memory_interruption": false,
+      "bytes": 319
+    },
+    {
+      "name": "full-final.log",
+      "sha256": "30de80bfd66c9bb37bccfda61f9768960b22c2a2f00c033d0e5007540259ebe9",
+      "result_lines": [
+        "658 passed in 114.65s (0:01:54)"
+      ],
+      "memory_interruption": false,
+      "bytes": 843
+    },
+    {
+      "name": "full-reviewed.log",
+      "sha256": "0740e02f11e6acff4efa2a112124e6097611ff570fa761a62072f1890dd981df",
+      "result_lines": [
+        "662 passed in 113.25s (0:01:53)"
+      ],
+      "memory_interruption": false,
+      "bytes": 843
+    },
+    {
+      "name": "graph-pointer-red.log",
+      "sha256": "574f7ee147a6b7068e35c6f669201831b22eacd728b6dd6308047bf0683c470d",
+      "result_lines": [
+        "1 failed in 1.54s"
+      ],
+      "memory_interruption": false,
+      "bytes": 20577
+    },
+    {
+      "name": "k8s-reader-green.log",
+      "sha256": "cdc70e942366a57fbb3a249b6cb2be35c5e08f3c92ff0d6fa8c83a4c2c0f2894",
+      "result_lines": [
+        "6 passed in 0.09s"
+      ],
+      "memory_interruption": false,
+      "bytes": 100
+    },
+    {
+      "name": "k8s-reader-red.log",
+      "sha256": "715ca3996414660dd0e9ff93ff637ce65f9602f843bee6edb12be4c6ce4c8337",
+      "result_lines": [
+        "2 failed in 0.16s"
+      ],
+      "memory_interruption": false,
+      "bytes": 2954
+    },
+    {
+      "name": "kubernetes-reviewed-v10.log",
+      "sha256": "e6d037851d8be627e26fc3e6f9aaea532a34fe99fb7a2730a8a2031cda68512b",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 234
+    },
+    {
+      "name": "kubernetes-reviewed.log",
+      "sha256": "e6d037851d8be627e26fc3e6f9aaea532a34fe99fb7a2730a8a2031cda68512b",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 234
+    },
+    {
+      "name": "lock-final.log",
+      "sha256": "c8f3c1c0c6c74ab584f9435593082e69329d2962c806769cf936c60f3665d1da",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 30
+    },
+    {
+      "name": "lock-reviewed.log",
+      "sha256": "ba342222a8a4dac5a38333ad9ba65c1dd0615d0dfe4e1321d7752e7ecfdd83d4",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 30
+    },
+    {
+      "name": "migration-baseline.log",
+      "sha256": "a0f571e44e33052494f7febec8aed3941bf0b5f063b497a92281268624bde06e",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 1239
+    },
+    {
+      "name": "protocol-demo.log",
+      "sha256": "74647facf4198c4a17e1c1ae509eb4c67b05ac24d5d3bb4411b158226d17a28f",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 208
+    },
+    {
+      "name": "protocol-final.log",
+      "sha256": "74647facf4198c4a17e1c1ae509eb4c67b05ac24d5d3bb4411b158226d17a28f",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 208
+    },
+    {
+      "name": "protocol-reviewed.log",
+      "sha256": "74647facf4198c4a17e1c1ae509eb4c67b05ac24d5d3bb4411b158226d17a28f",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 208
+    },
+    {
+      "name": "review-green.log",
+      "sha256": "210c0131cb7615ac1042323a4a871a54be8dd545000c334edafde36f32f7c526",
+      "result_lines": [
+        "1 failed, 26 passed in 10.06s"
+      ],
+      "memory_interruption": false,
+      "bytes": 1028
+    },
+    {
+      "name": "review-green2.log",
+      "sha256": "c3ee78b5fd062a63924cf181a92f26ed4cfb5c4d9800603a6cb00a887c562961",
+      "result_lines": [
+        "27 passed in 9.46s"
+      ],
+      "memory_interruption": false,
+      "bytes": 101
+    },
+    {
+      "name": "review-red.log",
+      "sha256": "753815d2fc2cf19d58e71c2b353342d53927d8c23e7af3a95f88902f720c82a1",
+      "result_lines": [
+        "4 failed, 23 deselected in 3.79s"
+      ],
+      "memory_interruption": false,
+      "bytes": 2891
+    },
+    {
+      "name": "ruff-complete-reviewed.log",
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 20
+    },
+    {
+      "name": "ruff-final.log",
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 20
+    },
+    {
+      "name": "ruff-next.log",
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 20
+    },
+    {
+      "name": "ruff-reviewed.log",
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "result_lines": [],
+      "memory_interruption": false,
+      "bytes": 20
+    },
+    {
+      "name": "state-green.log",
+      "sha256": "8d0317bbf1a8fb709d3946a3c1818e9c5a08472dd35ebe2a7e11cc5f5869a35c",
+      "result_lines": [
+        "29 passed in 8.42s"
+      ],
+      "memory_interruption": false,
+      "bytes": 101
+    },
+    {
+      "name": "state-red.log",
+      "sha256": "620ea6107a8c48edb1adea3f2025a9cf78635a7ae2f33c9011add3315d3c3e38",
+      "result_lines": [
+        "1 failed, 1 passed, 21 deselected in 2.52s"
+      ],
+      "memory_interruption": false,
+      "bytes": 2016
+    }
+  ],
+  "curated_evidence": [
+    {
+      "path": "evidence/protocol-evidence.json",
+      "sha256": "1ef4170d126cd0ce9b5b40b71b9f0f46a5c299a71cd1a8f3ba4bc4991d8c2705",
+      "bytes": 4517
+    },
+    {
+      "path": "evidence/browser-evidence.json",
+      "sha256": "fe284c4468cb89fc05f0d4a11ffa594e0197557023d5d8428cd140b780512868",
+      "bytes": 177
+    },
+    {
+      "path": "evidence/evaluation-report.json",
+      "sha256": "f218d3d012d5a0c6180eb5a64fd5738d2e41e4fce0979d9b9d668066cf4f33d4",
+      "bytes": 2296
+    },
+    {
+      "path": "evidence/kubernetes-evidence.json",
+      "sha256": "f10cc4bf930f4230b8fe0041927a0bcc28669c1d805072752124f5aea5a415ce",
+      "bytes": 3449
+    },
+    {
+      "path": "evidence/investigation-browser.png",
+      "sha256": "4f9e865080c63cfbe9c97752262fa18a99ea734acfe511b83d877baa3154f047",
+      "bytes": 277882
+    }
+  ]
+}

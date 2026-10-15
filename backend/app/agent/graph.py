@@ -11,12 +11,25 @@ from langgraph.graph.state import CompiledStateGraph
 
 from app.agent.state import AgentIntent, AgentState, AgentStateUpdate
 from app.agent.handoff import requests_handoff
-from app.agent.ticket_intake import collect_intake, has_intake_fields, intake_answer, intake_priority, is_creation, is_intake_followup, owned_intake
+from app.agent.ticket_intake import (
+    collect_intake,
+    has_intake_fields,
+    intake_answer,
+    intake_priority,
+    is_creation,
+    is_intake_followup,
+    owned_intake,
+)
 from app.agent.ticket_lookup import (
-    clarification_answer, is_lookup_message, lookup_record, owned_context,
-    select_ticket, ticket_numbers,
+    clarification_answer,
+    is_lookup_message,
+    lookup_record,
+    owned_context,
+    select_ticket,
+    ticket_numbers,
 )
 from app.llm.providers import ChatProvider
+from app.agent.decisions import TaskBudget
 from app.rag.retriever import Citation, RetrievalHit
 from app.schemas import TicketDraft, TicketStatusResult
 
@@ -56,6 +69,11 @@ class GraphDependencies:
     user_access_level: str = "employee"
     minimum_evidence_score: float = 0.25
     require_structured_citations: bool = False
+    agentic_retriever: object | None = None
+    investigator: object | None = None
+    investigation_scope: object | None = None
+    budget_factory: object | None = None
+    on_agent_progress: object | None = None
 
     def __post_init__(self) -> None:
         threshold = self.minimum_evidence_score
@@ -74,26 +92,34 @@ def build_graph(
         validation_error = _validate_initial_state(state)
         message = state.get("message", "")
         intent = (
-            _classify_intent(message, owned_context(state.get("ticket_context"),
-                                                    state["user_id"], state["conversation_id"]),
-                             owned_intake(state.get("ticket_intake_context"), state["user_id"], state["conversation_id"]))
+            _classify_intent(
+                message,
+                owned_context(
+                    state.get("ticket_context"),
+                    state["user_id"],
+                    state["conversation_id"],
+                ),
+                owned_intake(
+                    state.get("ticket_intake_context"),
+                    state["user_id"],
+                    state["conversation_id"],
+                ),
+            )
             if validation_error is None and isinstance(message, str)
             else "knowledge"
         )
+        if (
+            state.get("task_mode") == "investigate"
+            and intent == "knowledge"
+            and validation_error is None
+        ):
+            intent = "investigation"
         retrieval_hits = (
-            list(state.get("retrieval_hits", []))
-            if validation_error is None
-            else []
+            list(state.get("retrieval_hits", [])) if validation_error is None else []
         )
-        citations = (
-            list(state.get("citations", []))
-            if validation_error is None
-            else []
-        )
+        citations = list(state.get("citations", [])) if validation_error is None else []
         tool_history = (
-            list(state.get("tool_history", []))
-            if validation_error is None
-            else []
+            list(state.get("tool_history", [])) if validation_error is None else []
         )
         update: AgentStateUpdate = {
             "intent": intent,
@@ -103,6 +129,12 @@ def build_graph(
             "tool_history": tool_history,
             "step_count": _next_step(state),
         }
+        if dependencies.agentic_retriever is not None or intent == "investigation":
+            update["_task_budget"] = (
+                dependencies.budget_factory()
+                if dependencies.budget_factory
+                else TaskBudget()
+            )
         if validation_error is not None:
             update.update(
                 error="invalid_input",
@@ -120,6 +152,38 @@ def build_graph(
             return {"step_count": _next_step(state)}
 
         try:
+            if dependencies.agentic_retriever is not None:
+                result = await dependencies.agentic_retriever.run(
+                    state["message"],
+                    user_access_level=dependencies.user_access_level,
+                    history=state.get("history", []),
+                    budget=state.get("_task_budget"),
+                )
+                update = {
+                    "retrieval_hits": result.hits,
+                    "agent_trace": result.trace,
+                    "agent_budget": result.budget,
+                    "step_count": _next_step(state),
+                }
+                if result.clarification:
+                    update.update(
+                        answer=result.clarification,
+                        final_state="knowledge_clarification",
+                    )
+                    update["knowledge_context"] = {
+                        "schema_version": 1,
+                        "sources": [
+                            {
+                                "document_id": h.citation.document_id,
+                                "index_revision": h.citation.index_revision,
+                                "chunk_index": h.citation.chunk_index,
+                            }
+                            for h in result.hits
+                        ],
+                    }
+                elif result.error:
+                    update.update(error=result.error, handoff_reason="retrieval_failed")
+                return update
             hits = await dependencies.retriever.retrieve(
                 state["message"],
                 user_access_level=dependencies.user_access_level,
@@ -133,9 +197,7 @@ def build_graph(
             }
 
         evidence = [
-            hit
-            for hit in hits
-            if hit.score >= dependencies.minimum_evidence_score
+            hit for hit in hits if hit.score >= dependencies.minimum_evidence_score
         ]
         return {
             "retrieval_hits": evidence,
@@ -156,10 +218,29 @@ def build_graph(
     async def answer_with_citations(state: AgentState) -> AgentStateUpdate:
         hits = state.get("retrieval_hits", [])
         prompt = _answer_prompt(state["message"], hits, state.get("history", []))
+        contexts = [
+            t["context"]
+            for t in state.get("agent_trace", [])
+            if t.get("phase") == "relations"
+        ]
+        relation_context = getattr(dependencies.retriever, "latest_relations", None)
+        if not contexts and isinstance(relation_context, dict) and relation_context:
+            contexts = [relation_context]
+        if contexts:
+            prompt += (
+                "\n<source_backed_relations>\n"
+                + _safe_prompt_json(contexts)
+                + "\n</source_backed_relations>\n关系仅用于连接证据，回答仍必须引用上面的原文编号。"
+            )
         if dependencies.require_structured_citations:
             prompt += '\n<response_schema>返回JSON对象且不使用Markdown代码块：{"answer":"带[编号]依据的答案","citation_ids":[1]}。citation_ids只能包含上文证据编号；无法根据证据回答时返回空数组。</response_schema>'
         try:
+            budget = state.get("_task_budget")
+            if budget:
+                budget.take_model(prompt)
             completion = await dependencies.chat_provider.complete(prompt)
+            if budget:
+                budget.observe_model(completion)
         except Exception as error:
             return {
                 "final_state": "handoff",
@@ -184,37 +265,127 @@ def build_graph(
                 payload = json.loads(answer)
                 identifiers = payload["citation_ids"]
                 answer = payload["answer"]
-                if (not isinstance(answer, str) or not answer.strip()
-                    or not isinstance(identifiers, list) or not identifiers
-                    or any(type(i) is not int or i < 1 or i > len(hits) for i in identifiers)):
+                if (
+                    not isinstance(answer, str)
+                    or not answer.strip()
+                    or not isinstance(identifiers, list)
+                    or not identifiers
+                    or any(
+                        type(i) is not int or i < 1 or i > len(hits)
+                        for i in identifiers
+                    )
+                ):
                     raise ValueError("invalid citation response")
                 identifiers = list(dict.fromkeys(identifiers))
                 inline = [int(i) for i in re.findall(r"\[(\d+)\]", answer)]
                 if any(i not in identifiers for i in inline):
                     raise ValueError("inline citation not declared")
                 cited = [hits[i - 1].citation for i in identifiers]
-                citation_numbers = {original: position + 1 for position, original in enumerate(identifiers)}
-                answer = re.sub(r"\[(\d+)\]", lambda match: f"[{citation_numbers[int(match.group(1))]}]", answer)
+                citation_numbers = {
+                    original: position + 1
+                    for position, original in enumerate(identifiers)
+                }
+                answer = re.sub(
+                    r"\[(\d+)\]",
+                    lambda match: f"[{citation_numbers[int(match.group(1))]}]",
+                    answer,
+                )
             except (ValueError, KeyError, TypeError):
-                return {"answer":"回答未通过证据校验，需要人工支持。", "citations":[], "final_state":"handoff", "handoff_reason":"invalid_citations", "step_count":_next_step(state)}
+                return {
+                    "answer": "回答未通过证据校验，需要人工支持。",
+                    "citations": [],
+                    "final_state": "handoff",
+                    "handoff_reason": "invalid_citations",
+                    "step_count": _next_step(state),
+                }
         return {
             "answer": answer,
             "citations": cited,
-            "knowledge_context": {"schema_version": 1, "sources": [
-                {"document_id": hit.citation.document_id, "index_revision": hit.citation.index_revision,
-                 "chunk_index": hit.citation.chunk_index} for hit in hits]},
+            "knowledge_context": {
+                "schema_version": 1,
+                "sources": [
+                    {
+                        "document_id": hit.citation.document_id,
+                        "index_revision": hit.citation.index_revision,
+                        "chunk_index": hit.citation.chunk_index,
+                    }
+                    for hit in hits
+                ],
+            },
             "final_state": "answered",
+            "step_count": _next_step(state),
+            **({"agent_budget": budget.snapshot()} if budget else {}),
+        }
+
+    async def investigate(state):
+        if (
+            dependencies.investigator is None
+            or dependencies.investigation_scope is None
+            or dependencies.investigation_scope.user_id != state["user_id"]
+        ):
+            return {
+                "answer": "调查服务尚未配置，建议转人工支持。",
+                "final_state": "handoff",
+                "handoff_reason": "investigation_unavailable",
+                "step_count": _next_step(state),
+            }
+        report = await dependencies.investigator.run(
+            state["message"],
+            scope=dependencies.investigation_scope,
+            budget=state["_task_budget"],
+            on_progress=dependencies.on_agent_progress,
+        )
+        citations = []
+        for observation in report["observations"]:
+            for hit in observation["data"].get("hits", []):
+                value = hit.get("citation")
+                if isinstance(value, dict):
+                    citations.append(
+                        Citation(
+                            **{
+                                **value,
+                                "section_path": tuple(value.get("section_path", ())),
+                            }
+                        )
+                    )
+        return {
+            "answer": report["answer"],
+            "final_state": "investigated",
+            "investigation_report": report,
+            "knowledge_context": {
+                "schema_version": 1,
+                "sources": [
+                    {
+                        "document_id": c.document_id,
+                        "index_revision": c.index_revision,
+                        "chunk_index": c.chunk_index,
+                    }
+                    for c in citations
+                ],
+            },
+            "citations": citations,
+            "agent_budget": report["budget"],
             "step_count": _next_step(state),
         }
 
     async def lookup_ticket(state: AgentState) -> AgentStateUpdate:
-        context = owned_context(state.get("ticket_context"), state["user_id"], state["conversation_id"])
+        context = owned_context(
+            state.get("ticket_context"), state["user_id"], state["conversation_id"]
+        )
         selection = select_ticket(state["message"], context)
+
         def record(outcome: str) -> dict:
-            return lookup_record(state["user_id"], state["conversation_id"], selection, outcome)
+            return lookup_record(
+                state["user_id"], state["conversation_id"], selection, outcome
+            )
+
         if selection.cancelled:
-            return {"answer": "已取消本次工单查询。", "final_state": "ticket_lookup_cancelled",
-                    "ticket_lookup": record("cancelled"), "step_count": _next_step(state)}
+            return {
+                "answer": "已取消本次工单查询。",
+                "final_state": "ticket_lookup_cancelled",
+                "ticket_lookup": record("cancelled"),
+                "step_count": _next_step(state),
+            }
         ticket_number = selection.ticket_number
         if ticket_number is None:
             return {
@@ -245,8 +416,12 @@ def build_graph(
             "ticket_number": ticket_number,
             "answer": _ticket_status_answer(status),
             "final_state": "ticket_status",
-            "ticket_lookup": record("found" if status.found else "not_found") | (
-                {"progress_source": status.progress_source} if status.progress_source is not None else {}),
+            "ticket_lookup": record("found" if status.found else "not_found")
+            | (
+                {"progress_source": status.progress_source}
+                if status.progress_source is not None
+                else {}
+            ),
             "tool_history": _append_history(
                 state,
                 {
@@ -259,12 +434,25 @@ def build_graph(
         }
 
     async def collect_ticket_draft(state: AgentState) -> AgentStateUpdate:
-        record = collect_intake(state["message"], owned_intake(state.get("ticket_intake_context"),
-            state["user_id"], state["conversation_id"]), state["user_id"], state["conversation_id"])
+        record = collect_intake(
+            state["message"],
+            owned_intake(
+                state.get("ticket_intake_context"),
+                state["user_id"],
+                state["conversation_id"],
+            ),
+            state["user_id"],
+            state["conversation_id"],
+        )
         if record["outcome"] != "ready":
-            return {"ticket_intake": record, "answer": intake_answer(record),
-                    "final_state": "ticket_collection_cancelled" if record["outcome"] == "cancelled" else "ticket_collection",
-                    "step_count": _next_step(state)}
+            return {
+                "ticket_intake": record,
+                "answer": intake_answer(record),
+                "final_state": "ticket_collection_cancelled"
+                if record["outcome"] == "cancelled"
+                else "ticket_collection",
+                "step_count": _next_step(state),
+            }
         problem, impact = record["problem"], record["impact"]
         draft = TicketDraft(
             title=_ticket_title(problem),
@@ -272,7 +460,9 @@ def build_graph(
             priority=intake_priority(problem, impact),
             description=problem + "\n影响范围：" + impact,
             attempted_steps=tuple(record["attempted_steps"]),
-            problem=problem, impact=impact, intake_version=1,
+            problem=problem,
+            impact=impact,
+            intake_version=1,
         )
         return {
             "ticket_draft": draft,
@@ -285,10 +475,16 @@ def build_graph(
         try:
             if dependencies.require_structured_citations:
                 token = await dependencies.ticket_service.issue_confirmation_token(
-                    state["conversation_id"],draft,trace_id=state.get("trace_id"),
-                    run_id=state.get("run_id"),lease_token=state.get("lease_token"))
+                    state["conversation_id"],
+                    draft,
+                    trace_id=state.get("trace_id"),
+                    run_id=state.get("run_id"),
+                    lease_token=state.get("lease_token"),
+                )
             else:
-                token = await dependencies.ticket_service.issue_confirmation_token(state["conversation_id"],draft)
+                token = await dependencies.ticket_service.issue_confirmation_token(
+                    state["conversation_id"], draft
+                )
         except Exception as error:
             return {
                 "answer": "确认流程暂时不可用，建议转人工支持。",
@@ -337,6 +533,7 @@ def build_graph(
     workflow.add_node("collect_ticket_draft", collect_ticket_draft)
     workflow.add_node("issue_confirmation", issue_confirmation)
     workflow.add_node("handoff", handoff)
+    workflow.add_node("investigate", investigate)
 
     workflow.add_edge(START, "classify_intent")
     workflow.add_conditional_edges(
@@ -345,9 +542,18 @@ def build_graph(
         {
             "retrieve_evidence": "retrieve_evidence",
             "handoff": "handoff",
+            "investigate": "investigate",
         },
     )
-    workflow.add_edge("retrieve_evidence", "decide_next_action")
+    workflow.add_conditional_edges(
+        "retrieve_evidence",
+        lambda state: (
+            "finish"
+            if state.get("final_state") == "knowledge_clarification"
+            else "decide_next_action"
+        ),
+        {"finish": END, "decide_next_action": "decide_next_action"},
+    )
     workflow.add_conditional_edges(
         "decide_next_action",
         _route_next_action,
@@ -358,27 +564,52 @@ def build_graph(
             "handoff": "handoff",
         },
     )
-    workflow.add_conditional_edges("collect_ticket_draft",
-        lambda state: "issue_confirmation" if state.get("ticket_intake", {}).get("outcome") == "ready" else "finish",
-        {"issue_confirmation": "issue_confirmation", "finish": END})
+    workflow.add_conditional_edges(
+        "collect_ticket_draft",
+        lambda state: (
+            "issue_confirmation"
+            if state.get("ticket_intake", {}).get("outcome") == "ready"
+            else "finish"
+        ),
+        {"issue_confirmation": "issue_confirmation", "finish": END},
+    )
     workflow.add_edge("answer_with_citations", END)
     workflow.add_edge("lookup_ticket", END)
     workflow.add_edge("issue_confirmation", END)
     workflow.add_edge("handoff", END)
+    workflow.add_edge("investigate", END)
     return workflow.compile(name="it-operations-agent")
 
 
-def _classify_intent(message: str, context: dict | None = None, intake_context: dict | None = None) -> AgentIntent:
+def _classify_intent(
+    message: str, context: dict | None = None, intake_context: dict | None = None
+) -> AgentIntent:
     if requests_handoff(message):
         return "manual_handoff"
     creates_ticket = is_creation(message)
     if has_intake_fields(message) and (creates_ticket or intake_context is not None):
         return "ticket_create"
-    lookup = is_lookup_message(message, context or {"recent_lookup": False, "pending_candidates": None})
+    lookup = is_lookup_message(
+        message, context or {"recent_lookup": False, "pending_candidates": None}
+    )
     # A query about an already submitted ticket must not issue a new confirmation.
-    if lookup and (not creates_ticket or ticket_numbers(message) or any(word in message for word in (
-        "查询", "查单", "查一下", "状态", "进度", "处理到", "处理完", "怎么样",
-    ))):
+    if lookup and (
+        not creates_ticket
+        or ticket_numbers(message)
+        or any(
+            word in message
+            for word in (
+                "查询",
+                "查单",
+                "查一下",
+                "状态",
+                "进度",
+                "处理到",
+                "处理完",
+                "怎么样",
+            )
+        )
+    ):
         return "ticket_lookup"
     if creates_ticket:
         return "ticket_create"
@@ -399,10 +630,14 @@ def _route_after_classification(state: AgentState) -> str:
         return "handoff"
     if state.get("intent") == "manual_handoff":
         return "handoff"
+    if state.get("intent") == "investigation":
+        return "investigate"
     return "retrieve_evidence"
 
 
 def _route_next_action(state: AgentState) -> str:
+    if state.get("handoff_reason") == "retrieval_failed":
+        return "handoff"
     if state.get("step_count", 0) >= MAX_STEPS:
         return "handoff"
     if state.get("intent") == "ticket_create":
@@ -416,7 +651,7 @@ def _route_next_action(state: AgentState) -> str:
 
 def _handoff_reason(state: AgentState) -> str:
     explicit_reason = state.get("handoff_reason")
-    if explicit_reason in {"invalid_input", "restricted_request"}:
+    if explicit_reason in {"invalid_input", "restricted_request", "retrieval_failed"}:
         return explicit_reason
     if not _has_path_budget(state):
         return "max_steps_exceeded"
@@ -443,7 +678,9 @@ def _handoff_answer(reason: str) -> str:
     return "现有知识不足以确认该问题，建议转人工支持。"
 
 
-def _answer_prompt(message: str, hits: Sequence[RetrievalHit], history: Sequence[dict[str, str]] = ()) -> str:
+def _answer_prompt(
+    message: str, hits: Sequence[RetrievalHit], history: Sequence[dict[str, str]] = ()
+) -> str:
     question_data = _safe_prompt_json({"question": message})
     evidence_data = _safe_prompt_json(
         [
@@ -451,8 +688,15 @@ def _answer_prompt(message: str, hits: Sequence[RetrievalHit], history: Sequence
                 "citation": index,
                 "source_title": hit.citation.source_title,
                 "excerpt": hit.citation.excerpt,
-                **({"section_path": list(hit.citation.section_path), "char_start": hit.citation.char_start,
-                    "char_end": hit.citation.char_end} if hit.citation.char_start is not None else {}),
+                **(
+                    {
+                        "section_path": list(hit.citation.section_path),
+                        "char_start": hit.citation.char_start,
+                        "char_end": hit.citation.char_end,
+                    }
+                    if hit.citation.char_start is not None
+                    else {}
+                ),
             }
             for index, hit in enumerate(hits, start=1)
         ]
@@ -485,11 +729,25 @@ def _ticket_status_answer(status: TicketStatusResult) -> str:
     if not status.found:
         return status.latest_update
     from datetime import timezone
-    labels = {"support_reply": "支持回复", "employee_update": "员工补充", "public_comment": "公开回复",
-              "internal_note": "内部备注", "unclassified_note": "未分类历史备注", "audit": "处理记录"}
-    stamp = (status.updated_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-             if status.updated_at is not None else None)
-    prefix = f"最近可见记录（{stamp}，{labels.get(status.update_kind, '处理记录')}）：" if stamp else ""
+
+    labels = {
+        "support_reply": "支持回复",
+        "employee_update": "员工补充",
+        "public_comment": "公开回复",
+        "internal_note": "内部备注",
+        "unclassified_note": "未分类历史备注",
+        "audit": "处理记录",
+    }
+    stamp = (
+        status.updated_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        if status.updated_at is not None
+        else None
+    )
+    prefix = (
+        f"最近可见记录（{stamp}，{labels.get(status.update_kind, '处理记录')}）："
+        if stamp
+        else ""
+    )
     return (
         f"工单 {status.ticket_number} 当前状态为 {status.status}。"
         f"{prefix}{status.latest_update}"
@@ -587,7 +845,8 @@ def _validate_initial_state(state: AgentState) -> str | None:
     intent = state.get("intent")
     if intent is not None and (
         not isinstance(intent, str)
-        or intent not in {"knowledge", "ticket_lookup", "ticket_create", "manual_handoff"}
+        or intent
+        not in {"knowledge", "ticket_lookup", "ticket_create", "manual_handoff"}
     ):
         return "intent"
     ticket_draft = state.get("ticket_draft")
@@ -607,7 +866,8 @@ def _validate_initial_state(state: AgentState) -> str | None:
     final_state = state.get("final_state")
     if final_state is not None and (
         not isinstance(final_state, str)
-        or final_state not in {
+        or final_state
+        not in {
             "answered",
             "ticket_status",
             "ticket_lookup_clarification",
@@ -766,7 +1026,13 @@ def _is_restricted_request(message: str) -> bool:
 
 
 def _has_path_budget(state: AgentState) -> bool:
-    remaining_steps = 1 if state.get("intent") == "manual_handoff" else 4 if state.get("intent") == "ticket_create" else 3
+    remaining_steps = (
+        1
+        if state.get("intent") == "manual_handoff"
+        else 4
+        if state.get("intent") == "ticket_create"
+        else 3
+    )
     return _safe_step_count(state) + remaining_steps <= MAX_STEPS
 
 

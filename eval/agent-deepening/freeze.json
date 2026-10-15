@@ -1,0 +1,50 @@
+{
+  "schema_version": 2,
+  "project": "it",
+  "repeats": 3,
+  "strategies": [
+    {
+      "id": "A",
+      "orchestration": "single",
+      "relations": false
+    },
+    {
+      "id": "B",
+      "orchestration": "single",
+      "relations": true
+    },
+    {
+      "id": "C",
+      "orchestration": "multi",
+      "relations": false
+    },
+    {
+      "id": "D",
+      "orchestration": "multi",
+      "relations": true
+    }
+  ],
+  "max_model_calls": 12,
+  "max_tool_calls": 12,
+  "max_reserved_tokens": 256000,
+  "timeout_seconds": 90,
+  "adoption": {
+    "min_success_improvement_percentage_points": 5,
+    "max_cost_ratio": 1.5,
+    "max_p95_ratio": 1.5,
+    "critical_violations": 0,
+    "citation_support_rate": 0.95
+  },
+  "model_quality_status": "unverified",
+  "evidence_tiers": [
+    "scripted",
+    "real-services",
+    "real-model"
+  ],
+  "dataset_sha256": "c6e1ff45bd003edfabaa23e66a4b4bd8f899dcfe19ac40a23b797b7e072b1774",
+  "acceptance_count": 120,
+  "source_note": "Public synthetic task contract set. No claim of independent human relevant-set labels.",
+  "tool_contract_version": "2026-10-04-v1",
+  "prompt_version": "task-decisions-2026-10-04-v1",
+  "data_version": "synthetic-task-v1"
+}

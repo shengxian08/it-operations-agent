@@ -1,0 +1,140 @@
+{
+  "tier": "real-services",
+  "model_quality": "unverified",
+  "data_classification": "public-synthetic",
+  "stdio": {
+    "tools": [
+      "get_release_changes",
+      "get_service_health",
+      "lookup_ticket",
+      "query_error_logs",
+      "query_metrics",
+      "search_knowledge"
+    ],
+    "observation": {
+      "id": "da18d49e486e4004afc67c56a876de81",
+      "tool": "get_service_health",
+      "status": "ok",
+      "observed_at": "2026-10-01T08:30:00Z",
+      "origin": "snapshot",
+      "snapshot_id": "public-synthetic-operations-20261001-v1",
+      "knowledge_revision": null,
+      "resource": "checkout",
+      "data": {
+        "reachable": false,
+        "status": "unavailable"
+      },
+      "error_code": null
+    }
+  },
+  "source_publication": {
+    "job_id": "fc89c2ca-9da0-4f3d-9709-1839f5a4e80b",
+    "index": {
+      "id": "69820b49-1dc3-405d-94bd-654a87798677",
+      "kind": "publish",
+      "status": "completed",
+      "result": {
+        "status": "active",
+        "revision_id": "fca0e8a2-837c-408a-96d6-72a7cedffceb",
+        "excluded_documents": [
+          "public/dependencies.md",
+          "public/dependencies.md",
+          "public/dependencies.md",
+          "public/dependencies.md",
+          "public/dependencies.md",
+          "public/dependencies.md",
+          "public/dependencies.md"
+        ]
+      },
+      "error": null,
+      "created_at": "2026-10-03T22:17:35.439940+00:00",
+      "finished_at": "2026-10-03T22:17:36.468872+00:00",
+      "index_job_id": "69820b49-1dc3-405d-94bd-654a87798677"
+    },
+    "graph_preview": {
+      "graph_version": "9b5e45fe-b1f7-4c72-af4a-cf03989ef641",
+      "knowledge_revision": "fca0e8a2-837c-408a-96d6-72a7cedffceb",
+      "status": "candidate",
+      "created_at": "2026-10-03T22:17:36.379093+00:00",
+      "activated_at": null,
+      "relations": [
+        {
+          "left": "checkout",
+          "right": "database",
+          "predicate": "depends_on",
+          "source": {
+            "quote": "checkout depends_on database",
+            "chunk_index": 0,
+            "document_id": "17c05139-4876-477b-8a3f-80b9c65348ea",
+            "index_revision": "fca0e8a2-837c-408a-96d6-72a7cedffceb"
+          },
+          "source_available": true
+        }
+      ]
+    }
+  },
+  "http": {
+    "tool_names": [
+      "search_knowledge",
+      "get_service_health",
+      "query_error_logs",
+      "query_metrics",
+      "get_release_changes",
+      "lookup_ticket"
+    ],
+    "knowledge": {
+      "id": "c2a92c8cc1104a6fb3737875d917e527",
+      "tool": "search_knowledge",
+      "status": "ok",
+      "observed_at": "2026-10-03T22:17:36.673409Z",
+      "origin": "knowledge",
+      "snapshot_id": null,
+      "knowledge_revision": "fca0e8a2-837c-408a-96d6-72a7cedffceb",
+      "resource": null,
+      "data": {
+        "hits": [
+          {
+            "citation": {
+              "document_id": "17c05139-4876-477b-8a3f-80b9c65348ea",
+              "source_title": "公开合成调查资料",
+              "source_path": "agent-public.md",
+              "chunk_index": 0,
+              "excerpt": "checkout depends_on database",
+              "page_number": null,
+              "table_id": null,
+              "row_index": null,
+              "index_revision": "fca0e8a2-837c-408a-96d6-72a7cedffceb",
+              "section_path": [
+                "公开 checkout 调查资料"
+              ],
+              "char_start": 20,
+              "char_end": 48
+            },
+            "score": 1.0
+          },
+          {
+            "citation": {
+              "document_id": "17c05139-4876-477b-8a3f-80b9c65348ea",
+              "source_title": "公开合成调查资料",
+              "source_path": "agent-public.md",
+              "chunk_index": 1,
+              "excerpt": "发布后连接池配置变化可能导致连接等待，需要日志和指标验证，不能仅据时间先后断定根因。",
+              "page_number": null,
+              "table_id": null,
+              "row_index": null,
+              "index_revision": "fca0e8a2-837c-408a-96d6-72a7cedffceb",
+              "section_path": [
+                "公开 checkout 调查资料",
+                "故障调查"
+              ],
+              "char_start": 58,
+              "char_end": 100
+            },
+            "score": 0.5
+          }
+        ]
+      },
+      "error_code": null
+    }
+  }
+}
